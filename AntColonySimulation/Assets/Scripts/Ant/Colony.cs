@@ -16,7 +16,6 @@ public class Colony : MonoBehaviour
 
             GameObject antObj = Instantiate(antPrefab, spawnPos, Quaternion.identity);
 
-            // Předáme mravenci referenci na hnízdo
             AntAgent agent = antObj.GetComponent<AntAgent>();
             if (agent != null)
             {
