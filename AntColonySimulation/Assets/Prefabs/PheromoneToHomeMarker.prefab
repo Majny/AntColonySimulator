@@ -104,6 +104,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   type: 1
   lifetime: 15
+  initialIntensity: 1
 --- !u!58 &-9177293881341290782
 CircleCollider2D:
   m_ObjectHideFlags: 0

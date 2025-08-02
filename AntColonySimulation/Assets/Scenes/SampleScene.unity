@@ -546,6 +546,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1490512170}
   - component: {fileID: 1490512169}
+  - component: {fileID: 1490512171}
   m_Layer: 0
   m_Name: WorldBounds
   m_TagString: Untagged
@@ -565,14 +566,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c28e44d0fc644b48b599d60cbca2f7c1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  worldRect:
-    x: -160
-    y: -60
-    width: 320
-    height: 120
-  buildColliders: 1
-  wallThickness: 1
-  wallLayerName: Walls
 --- !u!4 &1490512170
 Transform:
   m_ObjectHideFlags: 0
@@ -589,6 +582,27 @@ Transform:
   - {fileID: 895141953}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1490512171
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1490512168}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d191de3279fa4ea1b6036e17470843ed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  worldRect:
+    serializedVersion: 2
+    x: -160
+    y: -60
+    width: 320
+    height: 120
+  buildColliders: 1
+  wallThickness: 1
+  wallLayerName: Walls
 --- !u!1 &1493032745
 GameObject:
   m_ObjectHideFlags: 0

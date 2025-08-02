@@ -10,7 +10,8 @@ GameObject:
   m_Component:
   - component: {fileID: 3991932984380066699}
   - component: {fileID: 6573118783466848159}
-  - component: {fileID: -8217378397462263943}
+  - component: {fileID: 5767892071891485018}
+  - component: {fileID: -753088674286991747}
   m_Layer: 0
   m_Name: ant_0
   m_TagString: Untagged
@@ -88,7 +89,43 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &-8217378397462263943
+--- !u!58 &5767892071891485018
+CircleCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8859006602413723701}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_Radius: 2.76
+--- !u!114 &-753088674286991747
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -100,27 +137,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8788c6513f1c25c69d3778e137d8c70, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 10
-  steerStrength: 0.35
-  directionNoiseRange: 0.06283186
-  directionUpdatePeriod: 0.1
-  markerPeriod: 1
-  senseRadius: 5
-  sampleCount: 32
-  sampleAngleRange: 1.5707964
-  intensityDecayCoef: 0.05
-  markerBaseIntensity: 8000
-  distanceFalloffPower: 1
-  forwardBias: 0.5
-  toHomeWeightMultiplier: 3
-  nestAttraction: 20000
-  nestDistPower: 1
-  nestSnapDistance: 10
-  useRaycastObstacleCheck: 0
-  obstacleMask:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  raycastDistance: 40
-  useBoundsPenalty: 1
-  pickupRadius: 1
-  nestTransform: {fileID: 0}
+  speed: 5
+  rotateNoise: 0.2
+  sensorOffset: 0.5
+  sensorSpacing: 0.5
+  turnAngle: 30

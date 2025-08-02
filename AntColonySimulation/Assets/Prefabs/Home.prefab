@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3379758947920493070}
   - component: {fileID: 4086694331081210978}
-  - component: {fileID: 262989578324430936}
+  - component: {fileID: -353497950217409233}
   m_Layer: 0
   m_Name: Home
   m_TagString: Untagged
@@ -28,7 +28,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 15, y: 15, z: 0.5}
+  m_LocalScale: {x: 30, y: 30, z: 0.5}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -88,7 +88,7 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &262989578324430936
+--- !u!114 &-353497950217409233
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -101,5 +101,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   antPrefab: {fileID: 8859006602413723701, guid: 59c6335f6e0ae2011bf721ed442cfeaf, type: 3}
-  numberOfAnts: 100
+  numberOfAnts: 20
   spawnRadius: 1.5

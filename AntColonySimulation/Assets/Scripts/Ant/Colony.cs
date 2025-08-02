@@ -4,7 +4,7 @@ public class Colony : MonoBehaviour
 {
     [Header("Ant Settings")]
     public GameObject antPrefab;
-    public int numberOfAnts = 1;
+    public int numberOfAnts = 20;
     public float spawnRadius = 1.5f;
 
     void Start()
@@ -13,14 +13,7 @@ public class Colony : MonoBehaviour
         {
             Vector2 offset = Random.insideUnitCircle * spawnRadius;
             Vector2 spawnPos = (Vector2)transform.position + offset;
-
-            GameObject antObj = Instantiate(antPrefab, spawnPos, Quaternion.identity);
-
-            AntAgent agent = antObj.GetComponent<AntAgent>();
-            if (agent != null)
-            {
-                agent.nestTransform = this.transform;
-            }
+            Instantiate(antPrefab, spawnPos, Quaternion.identity);
         }
     }
 }
