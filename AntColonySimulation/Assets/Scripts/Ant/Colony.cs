@@ -1,19 +1,29 @@
 using UnityEngine;
 
-public class Colony : MonoBehaviour
+public class NestController : MonoBehaviour
 {
-    [Header("Ant Settings")]
-    public GameObject antPrefab;
-    public int numberOfAnts = 20;
-    public float spawnRadius = 1.5f;
+    public AgentParameters agentParams;
+    public AntAgent agentPrefab;
+    public int initialAgents = 10;
 
-    void Start()
+    public Transform agentsParent;
+    private int foodCollected;
+
+    private void Start()
     {
-        for (int i = 0; i < numberOfAnts; i++)
-        {
-            Vector2 offset = Random.insideUnitCircle * spawnRadius;
-            Vector2 spawnPos = (Vector2)transform.position + offset;
-            Instantiate(antPrefab, spawnPos, Quaternion.identity);
-        }
+        for (int i = 0; i < initialAgents; i++)
+            SpawnAgent();
+    }
+
+    private void SpawnAgent()
+    {
+        AntAgent agent = Instantiate(agentPrefab, transform.position, Quaternion.identity, agentsParent);
+        agent.Initialize(this);
+    }
+
+    public void ReportFood()
+    {
+        foodCollected++;
+        Debug.Log("Food gathered: " + foodCollected);
     }
 }
