@@ -10,9 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8989874037467344184}
   - component: {fileID: 5288546000726638466}
-  - component: {fileID: -6629945650627591652}
   - component: {fileID: -9177293881341290782}
-  - component: {fileID: -5522895506037610139}
   m_Layer: 0
   m_Name: PheromoneToFoodMarker
   m_TagString: Untagged
@@ -90,20 +88,6 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &-6629945650627591652
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 376548801315013596}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d81c68de8c0349958d50dce279ffc852, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  type: 0
-  lifetime: 15
 --- !u!58 &-9177293881341290782
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -140,15 +124,3 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
   m_Radius: 0.5
---- !u!114 &-5522895506037610139
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 376548801315013596}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 868af925b45d4c9fbe017e81c0db4703, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 

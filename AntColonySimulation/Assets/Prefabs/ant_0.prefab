@@ -61,7 +61,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.1, y: 0.1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3309104076135276104}
@@ -172,15 +172,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   parameters: {fileID: 11400000, guid: 8b2d7204467f91fbc9206b933c505e0a, type: 2}
   sensorOrigin: {fileID: 3309104076135276104}
+  head: {fileID: 0}
   foodLayer:
     serializedVersion: 2
     m_Bits: 64
   nestLayer:
     serializedVersion: 2
     m_Bits: 128
-  obstacleLayer:
+  obstacleMask:
     serializedVersion: 2
     m_Bits: 256
+  obstacleProbe: 1.6
 --- !u!50 &7509270989727604040
 Rigidbody2D:
   serializedVersion: 5

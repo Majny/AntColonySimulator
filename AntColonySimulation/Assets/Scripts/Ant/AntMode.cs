@@ -1,5 +1,5 @@
 public enum AntMode
 {
-    Foraging, 
-    Returning
+    ToFood, 
+    ToHome
 }
