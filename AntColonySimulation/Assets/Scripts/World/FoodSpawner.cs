@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class FoodSpawner : MonoBehaviour
 {
@@ -12,21 +13,31 @@ public class FoodSpawner : MonoBehaviour
     public float spawnDelay = 2f;
 
     private float nextSpawnTime;
-
+/*
     void Start()
     {
         for (int i = 0; i < initialAmount; i++)
         {
             SpawnOneFood();
         }
-    }
+    }*/
 
     void Update()
     {
-        if (maintainAmount && Time.time >= nextSpawnTime && transform.childCount < initialAmount)
+        /*if (maintainAmount && Time.time >= nextSpawnTime && transform.childCount < initialAmount)
         {
             SpawnOneFood();
             nextSpawnTime = Time.time + spawnDelay;
+        }*/
+
+        // Spawn food on right-click
+        if (Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
+        {
+            Vector2 mousePosition = Mouse.current.position.ReadValue();
+            Vector3 worldPos = Camera.main.ScreenToWorldPoint(mousePosition);
+            worldPos.z = 0;
+
+            Instantiate(foodPrefab, worldPos, Quaternion.identity, transform);
         }
     }
 
