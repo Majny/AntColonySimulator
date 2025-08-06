@@ -9,52 +9,44 @@ public class PlayAreaObstacles : MonoBehaviour
 
     [SerializeField] BoxCollider2D[] walls;
 
-    void OnEnable() => Build(setLayers: true);
+    void OnEnable() => RebuildInternal();
 #if UNITY_EDITOR
-    void OnValidate()
-    {
-        if (!Application.isPlaying) Build(setLayers: false);
-    }
+    void OnValidate() { if (!Application.isPlaying) RebuildInternal(); }
 #endif
 
-    void EnsureArray()
-    {
-        if (walls == null || walls.Length != 4)
-            walls = new BoxCollider2D[4];
-    }
-
-    public void Build(bool setLayers)
+    [ContextMenu("Rebuild")]
+    public void RebuildInternal()
     {
         if (playArea == null) return;
 
-        EnsureArray();
+        for (int i = transform.childCount - 1; i >= 0; i--)
+        {
+#if UNITY_EDITOR
+            if (!Application.isPlaying) DestroyImmediate(transform.GetChild(i).gameObject);
+            else Destroy(transform.GetChild(i).gameObject);
+#else
+            Destroy(transform.GetChild(i).gameObject);
+#endif
+        }
+
+        if (walls == null || walls.Length != 4) walls = new BoxCollider2D[4];
+        int layer = LayerMask.NameToLayer(obstacleLayerName);
 
         for (int i = 0; i < 4; i++)
         {
-            string childName = $"Wall_{i}";
-            Transform t = transform.Find(childName);
-            if (t == null)
-            {
-                var go = new GameObject(childName);
-                go.transform.SetParent(transform, false);
-                t = go.transform;
-            }
+            var go = new GameObject($"Wall_{i}");
+            go.transform.SetParent(transform, false);
+            if (layer >= 0) go.layer = layer;
 
-            var col = t.GetComponent<BoxCollider2D>();
-            if (col == null)
-                col = t.gameObject.AddComponent<BoxCollider2D>();
-
+            var col = go.AddComponent<BoxCollider2D>();
+            col.isTrigger = false;
+            col.usedByComposite = false;
+            col.offset = Vector2.zero;
             walls[i] = col;
-
-            if (setLayers)
-            {
-                int layer = LayerMask.NameToLayer(obstacleLayerName);
-                if (layer >= 0) t.gameObject.layer = layer;
-            }
         }
 
         var rect = playArea.GetWorldRect();
-        Vector2 sz = rect.size;
+        Vector2 size = rect.size;
         Vector2 c = rect.center;
 
         Vector2[] pos =
@@ -67,19 +59,16 @@ public class PlayAreaObstacles : MonoBehaviour
 
         Vector2[] siz =
         {
-            new(thickness, sz.y + thickness * 2f),
-            new(thickness, sz.y + thickness * 2f),
-            new(sz.x + thickness * 2f, thickness),
-            new(sz.x + thickness * 2f, thickness),
+            new(thickness, size.y + thickness * 2f),
+            new(thickness, size.y + thickness * 2f),
+            new(size.x + thickness * 2f, thickness),
+            new(size.x + thickness * 2f, thickness),
         };
 
         for (int i = 0; i < 4; i++)
         {
-            var w = walls[i];
-            w.isTrigger = false;
-            w.offset = Vector2.zero;
-            w.size = siz[i];
-            w.transform.position = pos[i];
+            walls[i].size = siz[i];
+            walls[i].transform.position = pos[i];
         }
     }
 

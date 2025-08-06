@@ -36,6 +36,11 @@ public class AntAgent : MonoBehaviour
     private float timeSinceLeftNest;
     private float timeSinceLeftFood;
 
+    Vector2 obstacleAvoidForce;
+    float obstacleForceResetTime;
+    enum Antenna { None, Left, Right }
+    Antenna lastAntennaCollision = Antenna.None;
+
     [Header("Obstacles")]
     public LayerMask obstacleMask;
     public float obstacleProbe = 0.4f;
@@ -72,29 +77,24 @@ public class AntAgent : MonoBehaviour
         UpdatePheromoneSteering();
         UpdateRandomSteer();
 
-        if (mode == AntMode.ToFood)
-            HandleFoodSeeking();
-        else
-            HandleReturnHome();
+        if (mode == AntMode.ToFood) HandleFoodSeeking();
+        else HandleReturnHome();
+
+        HandleCollisionSteering();
 
         PerformMovement();
     }
 
-    void LateUpdate()
-    {
-        EnforcePlayArea();
-    }
-
+    void LateUpdate() => EnforcePlayArea();
 
     void PerformMovement()
     {
-        Vector2 steer = pheromoneSteer + randomSteer + targetSteer;
+        Vector2 steer = pheromoneSteer + randomSteer + targetSteer + obstacleAvoidForce;
 
         if (isTurning)
         {
             steer += turnSteerForce * parameters.steerStrength;
-            if (Time.time > turnEndTimestamp)
-                isTurning = false;
+            if (Time.time > turnEndTimestamp) isTurning = false;
         }
 
         steer = (steer.sqrMagnitude > 1e-6f) ? steer.normalized : heading;
@@ -104,23 +104,25 @@ public class AntAgent : MonoBehaviour
 
         Vector2 deltaMove = velocity * Time.deltaTime;
 
-        float probe = Mathf.Max(obstacleProbe, deltaMove.magnitude);
-        RaycastHit2D hit = Physics2D.Raycast(transform.position, heading, probe, obstacleMask);
+        Vector2 preHitDir = heading;
+        float probeDist = Mathf.Max(obstacleProbe, deltaMove.magnitude, parameters.collisionRadius);
+        RaycastHit2D hit = Physics2D.Raycast(transform.position, preHitDir, probeDist, obstacleMask);
         if (hit)
         {
-            Vector2 reflect = Vector2.Reflect(heading, hit.normal);
-            heading = reflect.normalized;
-            StartTurn();
+            Vector2 reflect = Vector2.Reflect(preHitDir, hit.normal).normalized;
+            heading = reflect;
 
-            transform.position = hit.point - heading * 0.02f;
+            transform.position = hit.point - preHitDir * parameters.collisionRadius;
+
             deltaMove = heading * (parameters.maxSpeed * Time.deltaTime * 0.5f);
-
             velocity = heading * parameters.maxSpeed;
+
+            if (!isTurning) StartTurn();
         }
 
         transform.position += (Vector3)deltaMove;
 
-        heading = velocity.sqrMagnitude > 1e-6f ? velocity.normalized : heading;
+        heading = (velocity.sqrMagnitude > 1e-6f) ? velocity.normalized : heading;
         transform.up = heading;
     }
 
@@ -144,7 +146,6 @@ public class AntAgent : MonoBehaviour
         turnSteerForce = baseDir + side * (Random.value - 0.5f) * 0.4f;
     }
 
-
     void TryDropPheromone()
     {
         if (Vector2.Distance(transform.position, lastPheromonePos) < parameters.pheromoneSpacing)
@@ -154,51 +155,41 @@ public class AntAgent : MonoBehaviour
             ? Time.time - timeSinceLeftFood
             : Time.time - timeSinceLeftNest;
 
-        if (timeSinceSwitch < parameters.pheromoneDecayTime)
-        {
-            float strength = Mathf.Lerp(1f, 0.5f, timeSinceSwitch / parameters.pheromoneDecayTime);
+        bool keepDropping = parameters.pheromoneRunOutTime <= 0f || timeSinceSwitch < parameters.pheromoneRunOutTime;
+        if (!keepDropping) return;
 
-            if (mode == AntMode.ToFood) homeField?.Add(transform.position, strength);
-            else foodField?.Add(transform.position, strength);
+        float denom = (parameters.pheromoneRunOutTime > 0f) ? parameters.pheromoneRunOutTime : 1f;
+        float t = Mathf.Clamp01(timeSinceSwitch / denom);
+        float strength = Mathf.Lerp(1f, 0.5f, t);
 
-            lastPheromonePos = (Vector2)transform.position
-                             + Random.insideUnitCircle * (parameters.pheromoneSpacing * 0.2f);
-        }
+        if (mode == AntMode.ToFood) homeField?.Add((Vector2)transform.position, strength);
+        else foodField?.Add((Vector2)transform.position, strength);
+
+        lastPheromonePos = (Vector2)transform.position + Random.insideUnitCircle * (parameters.pheromoneSpacing * 0.2f);
     }
 
     void UpdatePheromoneSteering()
     {
-        if (Time.time < nextSensorUpdateTime)
-            return;
-
+        if (Time.time < nextSensorUpdateTime) return;
         nextSensorUpdateTime = Time.time + parameters.timeBetweenSensorUpdate;
 
-        float angleOffset = parameters.pheromoneSensorAngle;
+        float a = parameters.pheromoneSensorAngle;
+        float l = SenseAtAngle(-a);
+        float c = SenseAtAngle(0f);
+        float r = SenseAtAngle(a);
 
-        float leftStrength = SenseAtAngle(-angleOffset);
-        float centerStrength = SenseAtAngle(0f);
-        float rightStrength = SenseAtAngle(angleOffset);
-
-        if (leftStrength > centerStrength && leftStrength > rightStrength)
-            pheromoneSteer = (Quaternion.Euler(0, 0, -angleOffset) * heading) * parameters.steerStrength;
-        else if (rightStrength > centerStrength)
-            pheromoneSteer = (Quaternion.Euler(0, 0, angleOffset) * heading) * parameters.steerStrength;
-        else
-            pheromoneSteer = heading * parameters.steerStrength;
+        if (l > c && l > r) pheromoneSteer = (Quaternion.Euler(0, 0, -a) * heading) * parameters.steerStrength;
+        else if (r > c) pheromoneSteer = (Quaternion.Euler(0, 0,  a) * heading) * parameters.steerStrength;
+        else pheromoneSteer = heading * parameters.steerStrength;
     }
 
     float SenseAtAngle(float angle)
     {
         Vector2 dir = Quaternion.Euler(0, 0, angle) * heading;
         Vector2 pos = (Vector2)transform.position + dir * parameters.pheromoneSensorDistance;
-
         var fieldToRead = (mode == AntMode.ToFood) ? foodField : homeField;
-
-        return (fieldToRead != null)
-            ? fieldToRead.SampleStrength(pos, parameters.pheromoneSensorRadius, false)
-            : 0f;
+        return (fieldToRead != null) ? fieldToRead.SampleStrength(pos, parameters.pheromoneSensorRadius, false) : 0f;
     }
-
 
     void UpdateRandomSteer()
     {
@@ -217,20 +208,14 @@ public class AntAgent : MonoBehaviour
         {
             Vector2 rnd = Random.insideUnitCircle.normalized;
             float d = Vector2.Dot(referenceDir, rnd);
-            if (d > bestDot)
-            {
-                bestDot = d;
-                best = rnd;
-            }
+            if (d > bestDot) { bestDot = d; best = rnd; }
         }
         return best;
     }
 
-
     void HandleFoodSeeking()
     {
-        if (targetFood == null)
-            AcquireTargetFood();
+        if (targetFood == null) AcquireTargetFood();
 
         if (targetFood != null)
         {
@@ -240,17 +225,43 @@ public class AntAgent : MonoBehaviour
             Vector2 toFood = (Vector2)targetFood.position - (Vector2)transform.position;
             float dst = toFood.magnitude;
             Vector2 dir = (dst > 1e-4f) ? (toFood / dst) : heading;
-
             targetSteer = dir * parameters.targetSteerStrength;
 
             float pickupDst = Mathf.Max(parameters.pickupDistance, (targetFood.lossyScale.x + targetFood.lossyScale.y) * 0.25f);
             if (dst < pickupDst)
-                PickupFood(targetFood);
+            {
+                var pile = targetFood.GetComponent<FoodPile>();
+                if (pile != null)
+                {
+                    Transform unit = pile.TakeOne(head != null ? head : transform);
+                    if (unit != null)
+                    {
+                        PickupCarriedUnit(unit);
+                    }
+                    else
+                    {
+                        targetFood = null;
+                    }
+                }
+                else
+                {
+                    PickupFood(targetFood);
+                }
+            }
         }
         else
         {
             targetSteer = Vector2.zero;
         }
+    }
+
+    void PickupCarriedUnit(Transform unit)
+    {
+        carriedItem = unit;
+        mode = AntMode.ToHome;
+        timeSinceLeftFood = Time.time;
+        targetFood = null;
+        StartTurn();
     }
 
     void HandleReturnHome()
@@ -260,22 +271,15 @@ public class AntAgent : MonoBehaviour
         {
             Vector2 toNest = (Vector2)nest.transform.position - (Vector2)transform.position;
             targetSteer = (toNest.sqrMagnitude > 1e-6f) ? toNest.normalized * parameters.targetSteerStrength : Vector2.zero;
-
             TryDepositAtNest(nest);
         }
-        else
-        {
-            targetSteer = Vector2.zero;
-        }
+        else targetSteer = Vector2.zero;
     }
 
     void AcquireTargetFood()
     {
         int count = Physics2D.OverlapCircleNonAlloc(sensorOrigin.position, parameters.detectionRadius, foodBuffer, foodLayer);
-        if (count > 0)
-        {
-            targetFood = foodBuffer[Random.Range(0, count)].transform;
-        }
+        if (count > 0) targetFood = foodBuffer[Random.Range(0, count)].transform;
     }
 
     void PickupFood(Transform food)
@@ -298,9 +302,7 @@ public class AntAgent : MonoBehaviour
 
         if (nest != null)
         {
-            if (carriedItem != null)
-                Destroy(carriedItem.gameObject);
-
+            if (carriedItem != null) Destroy(carriedItem.gameObject);
             nestReference.ReportFood();
             carriedItem = null;
 
@@ -310,6 +312,39 @@ public class AntAgent : MonoBehaviour
         }
     }
 
+    void HandleCollisionSteering()
+    {
+        if (Time.time > obstacleForceResetTime)
+        {
+            obstacleAvoidForce = Vector2.zero;
+            lastAntennaCollision = Antenna.None;
+        }
+
+        Vector2 side = new Vector2(-heading.y, heading.x);
+
+        Vector2 leftOrigin  = (Vector2)sensorOrigin.position - side * parameters.antennaOffset;
+        Vector2 rightOrigin = (Vector2)sensorOrigin.position + side * parameters.antennaOffset;
+
+        RaycastHit2D hitL = Physics2D.Raycast(leftOrigin, heading, parameters.antennaDistance, obstacleMask);
+        RaycastHit2D hitR = Physics2D.Raycast(rightOrigin, heading, parameters.antennaDistance, obstacleMask);
+
+        if (hitL || hitR)
+        {
+            if (hitL && lastAntennaCollision != Antenna.Right && (!hitR || hitL.distance < hitR.distance))
+            {
+                obstacleAvoidForce = side * parameters.collisionAvoidSteerStrength;
+                lastAntennaCollision = Antenna.Left;
+            }
+            if (hitR && lastAntennaCollision != Antenna.Left && (!hitL || hitR.distance < hitL.distance))
+            {
+                obstacleAvoidForce = -side * parameters.collisionAvoidSteerStrength;
+                lastAntennaCollision = Antenna.Right;
+            }
+
+            obstacleForceResetTime = Time.time + 0.5f;
+            randomSteer = obstacleAvoidForce.normalized * parameters.randomSteerStrength;
+        }
+    }
 
     void EnforcePlayArea()
     {
@@ -332,4 +367,3 @@ public class AntAgent : MonoBehaviour
         }
     }
 }
-

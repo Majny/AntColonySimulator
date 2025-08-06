@@ -7,10 +7,15 @@ public class PheromoneField : MonoBehaviour
 
     public AgentParameters agentParams;
 
+    [Header("Visuals")]
     public ParticleSystem particleDisplay;
     public Color pheremoneColor = Color.white;
     public float pheremoneSize = 0.05f;
     public float initialAlpha = 1f;
+
+    [Header("Tuning")]
+    [Tooltip("Škála síly feromonu (vizuálně i pro čtení). 1 = původní.")]
+    public float strengthMultiplier = 3f;
 
     private ParticleSystem.EmitParams emitParams;
     private float sqrPerceptionRadius;
@@ -19,21 +24,31 @@ public class PheromoneField : MonoBehaviour
     private float cellSizeReciprocal;
     private Cell[,] cells;
 
+    float EvapTime => (agentParams != null ? agentParams.pheromoneEvaporateTime : 10f);
+
     void Awake()
     {
-        EnsureParticleSystem(); 
+        EnsureParticleSystem();
         Init();
     }
 
     void Update()
     {
         if (particleDisplay != null)
-            emitParams.startLifetime = (agentParams != null ? agentParams.pheromoneDecayTime : 10f);
+        {
+            float life = EvapTime <= 0f || float.IsInfinity(EvapTime) ? 1e9f : EvapTime;
+            emitParams.startLifetime = life;
+
+            var main = particleDisplay.main;
+            main.startLifetime = life;
+        }
     }
 
     void Init()
     {
-        float perceptionRadius = Mathf.Max(0.01f, (agentParams != null ? agentParams.pheromoneSensorRadius : 0.25f));
+        float perceptionRadius = Mathf.Max(0.01f,
+            (agentParams != null ? agentParams.pheromoneSensorRadius : 0.25f));
+
         sqrPerceptionRadius = perceptionRadius * perceptionRadius;
 
         numCellsX = Mathf.CeilToInt(area.x / perceptionRadius);
@@ -48,23 +63,33 @@ public class PheromoneField : MonoBehaviour
 
         if (particleDisplay != null)
         {
-            emitParams.startLifetime = (agentParams != null ? agentParams.pheromoneDecayTime : 10f);
+            float life = EvapTime <= 0f || float.IsInfinity(EvapTime) ? 1e9f : EvapTime;
+
+            emitParams.startLifetime = life;
             emitParams.startSize = pheremoneSize;
 
             var main = particleDisplay.main;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.startSpeed = 0;
+            main.startLifetime = life;
+            main.startSize = pheremoneSize;
             main.maxParticles = 100 * 1000;
 
             var col = particleDisplay.colorOverLifetime;
             col.enabled = true;
 
-            Gradient grad = new Gradient();
-            grad.colorKeys = new GradientColorKey[] {
-                new GradientColorKey(Color.white, 0f),
-                new GradientColorKey(Color.white, 1f)
-            };
-            grad.alphaKeys = new GradientAlphaKey[] {
-                new GradientAlphaKey(initialAlpha, 0f),
-                new GradientAlphaKey(0f, 1f)
+            Gradient grad = new Gradient
+            {
+                colorKeys = new[]
+                {
+                    new GradientColorKey(Color.white, 0f),
+                    new GradientColorKey(Color.white, 1f)
+                },
+                alphaKeys = new[]
+                {
+                    new GradientAlphaKey(initialAlpha, 0f),
+                    new GradientAlphaKey(0f, 1f)
+                }
             };
             col.color = grad;
         }
@@ -86,18 +111,20 @@ public class PheromoneField : MonoBehaviour
 
         if (particleDisplay != null)
         {
-            emitParams.startColor = new Color(pheremoneColor.r, pheremoneColor.g, pheremoneColor.b, initialWeight);
+            float a = Mathf.Clamp01(initialWeight * strengthMultiplier);
+            emitParams.startColor = new Color(pheremoneColor.r, pheremoneColor.g, pheremoneColor.b, a);
             emitParams.position = point;
             particleDisplay.Emit(emitParams, 1);
         }
     }
-    
+
     public int GetAllInCircle(Entry[] result, Vector2 centre)
     {
         Vector2Int cellCoord = CellCoordFromPos(centre);
         int i = 0;
         float now = Time.time;
-        float evap = (agentParams != null ? agentParams.pheromoneDecayTime : 10f);
+        float evap = EvapTime;
+        bool infinite = evap <= 0f || float.IsInfinity(evap);
 
         for (int oy = -1; oy <= 1; oy++)
         {
@@ -114,12 +141,18 @@ public class PheromoneField : MonoBehaviour
                     var current = node.Value;
                     var next = node.Next;
 
-                    float age = now - current.creationTime;
-                    if (age > evap)
+                    if (!infinite)
                     {
-                        cell.entries.Remove(node);
+                        float age = now - current.creationTime;
+                        if (age > evap)
+                        {
+                            cell.entries.Remove(node);
+                            node = next;
+                            continue;
+                        }
                     }
-                    else if ((current.position - centre).sqrMagnitude < sqrPerceptionRadius)
+
+                    if ((current.position - centre).sqrMagnitude < sqrPerceptionRadius)
                     {
                         if (i >= result.Length) return result.Length;
                         result[i++] = current;
@@ -131,16 +164,18 @@ public class PheromoneField : MonoBehaviour
         }
         return i;
     }
+
     public void AddPheromone(Vector2 worldPos, float strength, bool toHome)
     {
         Add(worldPos, strength);
     }
-    
+
     public float SampleStrength(Vector2 worldPos, float radius, bool toHome)
     {
         float total = 0f;
         float now = Time.time;
-        float evap = (agentParams != null ? agentParams.pheromoneDecayTime : 10f);
+        float evap = EvapTime;
+        bool infinite = evap <= 0f || float.IsInfinity(evap);
 
         float radiusSqr = radius * radius;
         Vector2Int center = CellCoordFromPos(worldPos);
@@ -161,32 +196,48 @@ public class PheromoneField : MonoBehaviour
                     var current = node.Value;
                     var next = node.Next;
 
-                    float age = now - current.creationTime;
-                    if (age > evap)
+                    float weight;
+                    if (infinite)
                     {
-                        cell.entries.Remove(node);
+                        weight = current.initialWeight;
                     }
                     else
                     {
-                        float distSqr = (current.position - worldPos).sqrMagnitude;
-                        if (distSqr < radiusSqr)
+                        float age = now - current.creationTime;
+                        if (age > evap)
                         {
-                            float decay = 1f - (age / evap);
-                            total += current.initialWeight * decay;
+                            cell.entries.Remove(node);
+                            node = next;
+                            continue;
                         }
+                        float decay = 1f - (age / evap);
+                        weight = current.initialWeight * decay;
                     }
+
+                    float distSqr = (current.position - worldPos).sqrMagnitude;
+                    if (distSqr < radiusSqr)
+                    {
+                        total += weight * strengthMultiplier;
+                    }
+
                     node = next;
                 }
             }
         }
         return total;
     }
-    
+
+
     Vector2Int CellCoordFromPos(Vector2 point)
     {
-        int x = (int)((point.x + halfSize.x) * cellSizeReciprocal);
-        int y = (int)((point.y + halfSize.y) * cellSizeReciprocal);
-        return new Vector2Int(Mathf.Clamp(x, 0, numCellsX - 1), Mathf.Clamp(y, 0, numCellsY - 1));
+        Vector2 local = point - (Vector2)transform.position;
+
+        int x = (int)((local.x + halfSize.x) * cellSizeReciprocal);
+        int y = (int)((local.y + halfSize.y) * cellSizeReciprocal);
+        return new Vector2Int(
+            Mathf.Clamp(x, 0, numCellsX - 1),
+            Mathf.Clamp(y, 0, numCellsY - 1)
+        );
     }
 
     public class Cell
@@ -201,8 +252,9 @@ public class PheromoneField : MonoBehaviour
         public float initialWeight;
         public float creationTime;
     }
-    
-    void EnsureParticleSystem() {
+
+    void EnsureParticleSystem()
+    {
         if (particleDisplay != null) return;
 
         var go = new GameObject("PheromoneParticles");
@@ -212,7 +264,7 @@ public class PheromoneField : MonoBehaviour
         var main = particleDisplay.main;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
         main.startSpeed = 0;
-        main.startLifetime = agentParams ? agentParams.pheromoneDecayTime : 8f;
+        main.startLifetime = EvapTime <= 0f ? 1e9f : EvapTime;
         main.startSize = pheremoneSize;
         main.maxParticles = 100000;
 
@@ -225,22 +277,25 @@ public class PheromoneField : MonoBehaviour
         r.material = new Material(Shader.Find("Sprites/Default"));
         r.sortingOrder = 20;
     }
-    
-    public Rect GetWorldRect() {
+
+    public Rect GetWorldRect()
+    {
         Vector2 size = area;
         Vector2 center = transform.position;
         return new Rect(center - size * 0.5f, size);
     }
-    
-    public Vector2 ClampToArea(Vector2 p) {
+
+    public Vector2 ClampToArea(Vector2 p)
+    {
         var r = GetWorldRect();
         return new Vector2(
             Mathf.Clamp(p.x, r.xMin, r.xMax),
             Mathf.Clamp(p.y, r.yMin, r.yMax)
         );
     }
-    
-    public Vector2 RandomPointInArea() {
+
+    public Vector2 RandomPointInArea()
+    {
         var r = GetWorldRect();
         return new Vector2(Random.Range(r.xMin, r.xMax), Random.Range(r.yMin, r.yMax));
     }
