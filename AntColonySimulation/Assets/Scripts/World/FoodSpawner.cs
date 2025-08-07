@@ -2,57 +2,76 @@ using UnityEngine;
 
 public class FoodSpawner : MonoBehaviour
 {
-    [Header("Spawn")]
-    public FoodPile pilePrefab;
-    public int unitsPerPile = 50;
-    public float spawnInterval = 30f;
-    public int maxPiles = 10;
+    public float radius = 3f;
+    public int amount = 20; 
+    public bool maintainAmount = true;
+    public float timeBetweenSpawns = 2f;
+    public GameObject foodPrefab;
 
-    [Header("Area")]
-    public PheromoneField playArea;
-    public float edgeMargin = 0.6f;
+    [Header("Clustering")]
+    public int blobCount = 3;
+    public int seed = 0;
 
-    float nextSpawn;
+    System.Random prng;
+    Vector3[] blobs;
+    float nextSpawnTime;
 
-    void Start()
+    void Awake()
     {
-        SpawnPile();
-        nextSpawn = Time.time + spawnInterval;
+        BuildBlobs();
+
+        for (int i = 0; i < amount; i++)
+            SpawnFood();
+
+        nextSpawnTime = Time.time + timeBetweenSpawns;
     }
 
     void Update()
     {
-        if (Time.time >= nextSpawn)
+        if (!maintainAmount || foodPrefab == null) return;
+
+        if (transform.childCount < amount && Time.time >= nextSpawnTime)
         {
-            SpawnPile();
-            nextSpawn += spawnInterval;
+            SpawnFood();
+            nextSpawnTime = Time.time + timeBetweenSpawns;
         }
     }
 
-    void SpawnPile()
+    void BuildBlobs()
     {
-        if (pilePrefab == null) return;
-        if (maxPiles > 0 && transform.childCount >= maxPiles) return;
+        Random.InitState(seed);
+        prng = new System.Random(seed);
 
-        Vector2 pos;
-        if (playArea != null)
-        {
-            var r = playArea.GetWorldRect(); 
-            float x = Random.Range(r.xMin + edgeMargin, r.xMax - edgeMargin);
-            float y = Random.Range(r.yMin + edgeMargin, r.yMax - edgeMargin);
-            pos = new Vector2(x, y);
-        }
-        else
-        {
-            pos = (Vector2)transform.position + Random.insideUnitCircle * 5f;
-        }
+        blobs = new Vector3[blobCount + 1];
 
-        var pile = Instantiate(pilePrefab, pos, Quaternion.identity, transform);
-        pile.SetInitialUnits(unitsPerPile);
+        blobs[0] = new Vector3(transform.position.x, transform.position.y, radius);
+
+        for (int i = 0; i < blobCount; i++)
+        {
+            Vector2 pos = (Vector2)transform.position + Random.insideUnitCircle * radius;
+            float r = Mathf.Lerp(radius * 0.2f, radius * 0.5f, Random.value);
+            blobs[i + 1] = new Vector3(pos.x, pos.y, r);
+        }
+    }
+
+    void SpawnFood()
+    {
+        if (foodPrefab == null) return;
+
+        Vector3 blob = blobs[prng.Next(0, blobs.Length)];
+        Vector2 p = (Vector2)blob + Random.insideUnitCircle.normalized * blob.z * Mathf.Min(Random.value, Random.value);
+
+        var go = Instantiate(foodPrefab, p, Quaternion.identity, transform);
 
         int foodLayer = LayerMask.NameToLayer("Food");
-        if (foodLayer != -1) pile.gameObject.layer = foodLayer;
-
-        Debug.Log($"[FoodSpawner] Spawned pile at {pos} with {unitsPerPile} units.");
+        if (foodLayer >= 0) go.layer = foodLayer;
     }
+
+#if UNITY_EDITOR
+    void OnDrawGizmosSelected()
+    {
+        Gizmos.color = new Color(1f, 1f, 1f, 0.35f);
+        Gizmos.DrawWireSphere(transform.position, radius);
+    }
+#endif
 }

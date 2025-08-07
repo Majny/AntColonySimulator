@@ -1,328 +1,282 @@
 using UnityEngine;
 
+
 public class AntAgent : MonoBehaviour
 {
-    [Header("Config")]
+    [Header("Config & refs")]
     public AgentParameters parameters;
     public Transform sensorOrigin;
     public Transform head;
     public LayerMask foodLayer;
     public LayerMask nestLayer;
-
-    [Header("Refs (set at runtime)")]
-    private NestController nestReference;
-    private PheromoneField homeField;
-    private PheromoneField foodField;
-
-    private AntMode mode;
-    private Transform carriedItem;
-    private Transform targetFood;
-
-    private Vector2 velocity;
-    private Vector2 heading;
-
-    private Vector2 pheromoneSteer;
-    private Vector2 randomSteer;
-    private Vector2 targetSteer;
-    private Vector2 turnSteerForce;
-    private bool isTurning;
-    private float turnEndTimestamp;
-
-    private float nextWiggle;
-    private float nextRandomSteerTime;
-    private float nextSensorUpdateTime;
-    private Vector2 lastPheromonePos;
-
-    private float timeSinceLeftNest;
-    private float timeSinceLeftFood;
-
-    Vector2 obstacleAvoidForce;
-    float obstacleForceResetTime;
-    enum Antenna { None, Left, Right }
-    Antenna lastAntennaCollision = Antenna.None;
-
-    [Header("Obstacles")]
     public LayerMask obstacleMask;
-    public float obstacleProbe = 0.4f;
 
-    private PheromoneField playArea;
-    public void SetPlayArea(PheromoneField area) => playArea = area;
+    PheromoneField homeField;
+    PheromoneField foodField;
 
-    private readonly Collider2D[] foodBuffer = new Collider2D[8];
+    private NestController nestRef;
+    PheromoneField playArea;
+    public void SetPlayArea(PheromoneField f) => playArea = f;
+
+    AntMode mode;
+    Transform carriedItem;
+    Transform targetFood;
+
+    Vector2 heading, velocity;
+    Vector2 randomSteer, pheromoneSteer, targetSteer;
+    Vector2 obstacleAvoidForce;
+
+    float nextRandomSteerTime;
+
+    Vector2 lastPheromonePos;
+    float timeSinceLeftNest, timeSinceLeftFood;
+
+    bool isTurning;
+    Vector2 turnSteerForce;
+    float turnEndTime;
+
+    float nextSensorSampleTime;
+
+    enum Antenna { None, Left, Right }
+    Antenna lastAntennaHit = Antenna.None;
+    float obstacleResetTime;
+
+    readonly Collider2D[] foodBuffer = new Collider2D[4];
+
+    #region — Initializace
 
     public void Init(NestController nest, PheromoneField home, PheromoneField food)
     {
-        nestReference = nest;
+        nestRef = nest;
         homeField = home;
         foodField = food;
 
-        if (sensorOrigin == null) sensorOrigin = transform;
+        if (!sensorOrigin) sensorOrigin = transform;
 
-        transform.rotation = Quaternion.Euler(0f, 0f, Random.Range(0f, 360f));
-        heading = transform.up;
+        transform.rotation = Quaternion.Euler(0, 0, Random.value * 360f);
+        heading = transform.right;
         velocity = heading * parameters.maxSpeed;
-        lastPheromonePos = transform.position;
         mode = AntMode.ToFood;
 
+        lastPheromonePos = transform.position;
         timeSinceLeftNest = Time.time;
-        nextWiggle = Time.time + Random.Range(0.3f, 1.2f);
-        nextSensorUpdateTime = Time.time + Random.Range(0f, parameters.timeBetweenSensorUpdate);
-        nextRandomSteerTime = Time.time + Random.Range(parameters.randomSteerMaxDuration / 3f, parameters.randomSteerMaxDuration);
+
+        ScheduleNextRandomSteer();
+        nextSensorSampleTime = Random.value * parameters.timeBetweenSensorUpdate;
     }
 
-    void Update()
+    #endregion
+    #region — Unity Loop
+
+    void Update ()
     {
-        TryDropPheromone();
-        ApplyWiggle();
-        UpdatePheromoneSteering();
-        UpdateRandomSteer();
+        PlacePheromoneIfNeeded();
+        HandleRandomSteering();
+        HandlePheromoneSteering();
 
         if (mode == AntMode.ToFood) HandleFoodSeeking();
         else HandleReturnHome();
 
         HandleCollisionSteering();
-
-        PerformMovement();
+        IntegrateMovement();
     }
 
     void LateUpdate() => EnforcePlayArea();
 
-    void PerformMovement()
+    #endregion
+    
+    #region — Movement
+
+    void IntegrateMovement ()
     {
-        Vector2 steer = pheromoneSteer + randomSteer + targetSteer + obstacleAvoidForce;
+        Vector2 steer = randomSteer + pheromoneSteer + targetSteer + obstacleAvoidForce;
 
         if (isTurning)
         {
-            steer += turnSteerForce * parameters.steerStrength;
-            if (Time.time > turnEndTimestamp) isTurning = false;
+            steer += turnSteerForce * parameters.targetSteerStrength;
+            if (Time.time > turnEndTime) isTurning = false;
         }
 
-        steer = (steer.sqrMagnitude > 1e-6f) ? steer.normalized : heading;
+        steer = steer.sqrMagnitude > 1e-6f ? steer.normalized : heading;
+        Vector2 dv = steer * parameters.maxSpeed;
+        velocity = Vector2.Lerp(velocity, dv, parameters.acceleration * Time.deltaTime);
 
-        Vector2 desiredVel = steer * parameters.maxSpeed;
-        velocity = Vector2.Lerp(velocity, desiredVel, parameters.acceleration * Time.deltaTime);
+        float probe = Mathf.Max(parameters.collisionRadius, Mathf.Max(parameters.antennaDistance, velocity.magnitude * Time.deltaTime));
 
-        Vector2 deltaMove = velocity * Time.deltaTime;
+        if (Physics2D.Raycast(transform.position, heading, probe, obstacleMask))
+            StartTurnAround();
 
-        Vector2 preHitDir = heading;
-        float probeDist = Mathf.Max(obstacleProbe, deltaMove.magnitude, parameters.collisionRadius);
-        RaycastHit2D hit = Physics2D.Raycast(transform.position, preHitDir, probeDist, obstacleMask);
-        if (hit)
-        {
-            Vector2 reflect = Vector2.Reflect(preHitDir, hit.normal).normalized;
-            heading = reflect;
-
-            transform.position = hit.point - preHitDir * parameters.collisionRadius;
-
-            deltaMove = heading * (parameters.maxSpeed * Time.deltaTime * 0.5f);
-            velocity = heading * parameters.maxSpeed;
-
-            if (!isTurning) StartTurn();
-        }
-
-        transform.position += (Vector3)deltaMove;
-
-        heading = (velocity.sqrMagnitude > 1e-6f) ? velocity.normalized : heading;
-        transform.up = heading;
+        transform.position += (Vector3)(velocity * Time.deltaTime);
+        heading = velocity.normalized;
+        transform.right = heading;
     }
 
-    void ApplyWiggle()
+    #endregion
+    
+    #region — Random Steering
+
+    void HandleRandomSteering ()
     {
-        if (Time.time > nextWiggle)
-        {
-            float deltaAngle = Random.Range(-parameters.randomTurnAngle, parameters.randomTurnAngle);
-            heading = Quaternion.Euler(0f, 0f, deltaAngle) * heading;
-            nextWiggle = Time.time + Random.Range(0.3f, parameters.randomWiggleInterval);
-        }
-    }
+        if (targetFood) { randomSteer = Vector2.zero; return; }
 
-    void StartTurn()
-    {
-        isTurning = true;
-        turnEndTimestamp = Time.time + 1.5f;
-
-        Vector2 baseDir = -heading;
-        Vector2 side = new Vector2(-baseDir.y, baseDir.x);
-        turnSteerForce = baseDir + side * (Random.value - 0.5f) * 0.4f;
-    }
-
-    void TryDropPheromone()
-    {
-        if (Vector2.Distance(transform.position, lastPheromonePos) < parameters.pheromoneSpacing)
-            return;
-
-        float timeSinceSwitch = (mode == AntMode.ToHome)
-            ? Time.time - timeSinceLeftFood
-            : Time.time - timeSinceLeftNest;
-
-        bool keepDropping = parameters.pheromoneRunOutTime <= 0f || timeSinceSwitch < parameters.pheromoneRunOutTime;
-        if (!keepDropping) return;
-
-        float denom = (parameters.pheromoneRunOutTime > 0f) ? parameters.pheromoneRunOutTime : 1f;
-        float t = Mathf.Clamp01(timeSinceSwitch / denom);
-        float strength = Mathf.Lerp(1f, 0.5f, t);
-
-        if (mode == AntMode.ToFood) homeField?.Add((Vector2)transform.position, strength);
-        else foodField?.Add((Vector2)transform.position, strength);
-
-        lastPheromonePos = (Vector2)transform.position + Random.insideUnitCircle * (parameters.pheromoneSpacing * 0.2f);
-    }
-
-    void UpdatePheromoneSteering()
-    {
-        if (Time.time < nextSensorUpdateTime) return;
-        nextSensorUpdateTime = Time.time + parameters.timeBetweenSensorUpdate;
-
-        float a = parameters.pheromoneSensorAngle;
-        float l = SenseAtAngle(-a);
-        float c = SenseAtAngle(0f);
-        float r = SenseAtAngle(a);
-
-        if (l > c && l > r) pheromoneSteer = (Quaternion.Euler(0, 0, -a) * heading) * parameters.steerStrength;
-        else if (r > c) pheromoneSteer = (Quaternion.Euler(0, 0,  a) * heading) * parameters.steerStrength;
-        else pheromoneSteer = heading * parameters.steerStrength;
-    }
-
-    float SenseAtAngle(float angle)
-    {
-        Vector2 dir = Quaternion.Euler(0, 0, angle) * heading;
-        Vector2 pos = (Vector2)transform.position + dir * parameters.pheromoneSensorDistance;
-        var fieldToRead = (mode == AntMode.ToFood) ? foodField : homeField;
-        return (fieldToRead != null) ? fieldToRead.SampleStrength(pos, parameters.pheromoneSensorRadius, false) : 0f;
-    }
-
-    void UpdateRandomSteer()
-    {
         if (Time.time > nextRandomSteerTime)
         {
-            nextRandomSteerTime = Time.time + Random.Range(parameters.randomSteerMaxDuration / 3f, parameters.randomSteerMaxDuration);
-            randomSteer = GetRandomDir(heading) * parameters.randomSteerStrength;
+            ScheduleNextRandomSteer();
+            randomSteer = BestRandomDir(heading, 5) * parameters.randomSteerStrength;
         }
     }
+    void ScheduleNextRandomSteer() =>
+        nextRandomSteerTime = Time.time +
+            Random.Range(parameters.randomSteerMaxDuration / 3f, parameters.randomSteerMaxDuration);
 
-    Vector2 GetRandomDir(Vector2 referenceDir, int iterations = 4)
+    static Vector2 BestRandomDir (Vector2 refDir, int tries)
     {
-        Vector2 best = Vector2.zero;
-        float bestDot = -1f;
-        for (int i = 0; i < iterations; i++)
+        Vector2 best = Vector2.zero; float bestDot = -1;
+        for (int i = 0; i < tries; i++)
         {
-            Vector2 rnd = Random.insideUnitCircle.normalized;
-            float d = Vector2.Dot(referenceDir, rnd);
-            if (d > bestDot) { bestDot = d; best = rnd; }
+            Vector2 r = Random.insideUnitCircle.normalized;
+            float d = Vector2.Dot(refDir, r);
+            if (d > bestDot) { bestDot = d; best = r; }
         }
         return best;
     }
 
-    void HandleFoodSeeking()
+    #endregion
+    
+    #region — Pheromones
+
+    void PlacePheromoneIfNeeded ()
     {
-        if (targetFood == null) AcquireTargetFood();
+        if (Vector2.Distance(transform.position, lastPheromonePos) <= parameters.pheromoneSpacing)
+            return;
 
-        if (targetFood != null)
-        {
-            pheromoneSteer = Vector2.zero;
-            randomSteer = Vector2.zero;
+        float legTime = (mode == AntMode.ToHome) ? Time.time - timeSinceLeftFood : Time.time - timeSinceLeftNest;
 
-            Vector2 toFood = (Vector2)targetFood.position - (Vector2)transform.position;
-            float dst = toFood.magnitude;
-            Vector2 dir = (dst > 1e-4f) ? (toFood / dst) : heading;
-            targetSteer = dir * parameters.targetSteerStrength;
+        if (parameters.pheromoneRunOutTime > 0 &&
+            legTime > parameters.pheromoneRunOutTime)
+            return;
+        float t = (parameters.pheromoneRunOutTime <= 0f) ? 1f : 1f - (legTime / parameters.pheromoneRunOutTime);
+        float strength = Mathf.Lerp(0.5f, 1f, t);
 
-            float pickupDst = Mathf.Max(parameters.pickupDistance, (targetFood.lossyScale.x + targetFood.lossyScale.y) * 0.25f);
-            if (dst < pickupDst)
+        if (mode == AntMode.ToFood) homeField?.Add(transform.position, strength);
+        else foodField?.Add(transform.position, strength);
+
+        lastPheromonePos = (Vector2)transform.position + Random.insideUnitCircle * parameters.pheromoneSpacing * 0.2f;
+    }
+
+    #endregion
+    
+    #region — Pheromone Steering
+
+    void HandlePheromoneSteering ()
+    {
+        if (Time.time < nextSensorSampleTime) return;
+        nextSensorSampleTime = Time.time + parameters.timeBetweenSensorUpdate;
+
+        float a = parameters.pheromoneSensorAngle;
+        float L = SampleSensor(-a);
+        float C = SampleSensor( 0);
+        float R = SampleSensor( a);
+
+        if (L > C && L > R) pheromoneSteer = Rotate(heading, -a) * parameters.steerStrength;
+        else if (R > C) pheromoneSteer = Rotate(heading, a) * parameters.steerStrength;
+        else pheromoneSteer = heading * parameters.steerStrength;
+    }
+
+    float SampleSensor (float angleDeg)
+    {
+        Vector2 dir = Rotate(heading, angleDeg);
+        Vector2 pos = (Vector2)transform.position + dir * parameters.pheromoneSensorDistance;
+
+        var field = mode == AntMode.ToFood ? foodField : homeField;
+        return field ? field.SampleStrength(pos, parameters.pheromoneSensorSize, false) : 0f;
+    }
+    static Vector2 Rotate (Vector2 v, float ang) =>
+        Quaternion.Euler(0,0,ang) * v;
+
+    #endregion
+    
+    #region —  Food
+
+    void HandleFoodSeeking ()
+    {
+        if (!targetFood) AcquireTargetFood();
+        if (!targetFood) { targetSteer = Vector2.zero; return; }
+
+        pheromoneSteer = randomSteer = Vector2.zero;
+
+        Vector2 toFood = (Vector2)targetFood.position - (Vector2)transform.position;
+        targetSteer = toFood.normalized * parameters.targetSteerStrength;
+
+        if (toFood.magnitude < parameters.pickupDistance)
+            PickupFood(targetFood);
+    }
+
+    void AcquireTargetFood ()
+    {
+        int n = Physics2D.OverlapCircleNonAlloc(sensorOrigin.position, parameters.detectionRadius, foodBuffer, foodLayer);
+        for (int i = 0; i < n; i++)
+            if (foodBuffer[i] && !foodBuffer[i].GetComponentInParent<AntAgent>())
             {
-                var pile = targetFood.GetComponent<FoodPile>();
-                if (pile != null)
-                {
-                    Transform unit = pile.TakeOne(head != null ? head : transform);
-                    if (unit != null)
-                    {
-                        PickupCarriedUnit(unit);
-                    }
-                    else
-                    {
-                        targetFood = null;
-                    }
-                }
-                else
-                {
-                    PickupFood(targetFood);
-                }
+                targetFood = foodBuffer[i].transform; 
+                break;
             }
-        }
-        else
-        {
-            targetSteer = Vector2.zero;
-        }
     }
 
-    void PickupCarriedUnit(Transform unit)
-    {
-        carriedItem = unit;
-        mode = AntMode.ToHome;
-        timeSinceLeftFood = Time.time;
-        targetFood = null;
-        StartTurn();
-    }
-
-    void HandleReturnHome()
-    {
-        Collider2D nest = Physics2D.OverlapCircle(sensorOrigin.position, parameters.detectionRadius, nestLayer);
-        if (nest != null)
-        {
-            Vector2 toNest = (Vector2)nest.transform.position - (Vector2)transform.position;
-            targetSteer = (toNest.sqrMagnitude > 1e-6f) ? toNest.normalized * parameters.targetSteerStrength : Vector2.zero;
-            TryDepositAtNest(nest);
-        }
-        else targetSteer = Vector2.zero;
-    }
-
-    void AcquireTargetFood()
-    {
-        int count = Physics2D.OverlapCircleNonAlloc(sensorOrigin.position, parameters.detectionRadius, foodBuffer, foodLayer);
-        if (count > 0) targetFood = foodBuffer[Random.Range(0, count)].transform;
-    }
-
-    void PickupFood(Transform food)
+    void PickupFood (Transform food)
     {
         carriedItem = food;
-        Transform parent = (head != null) ? head : transform;
-        carriedItem.SetParent(parent, worldPositionStays: true);
-        carriedItem.position = parent.position;
+        food.SetParent(head ? head : transform, true);
+        food.localPosition = Vector3.zero;
+
+        food.gameObject.layer = 0;
+        foreach (var c in food.GetComponentsInChildren<Collider2D>()) c.enabled = false;
+        if (food.TryGetComponent(out Rigidbody2D rb)) Destroy(rb);
 
         mode = AntMode.ToHome;
         timeSinceLeftFood = Time.time;
         targetFood = null;
-        StartTurn();
+        StartTurnAround();
     }
 
-    void TryDepositAtNest(Collider2D nest = null)
+    void HandleReturnHome ()
     {
-        if (nest == null)
-            nest = Physics2D.OverlapCircle(sensorOrigin.position, parameters.detectionRadius, nestLayer);
+        Collider2D nest = Physics2D.OverlapCircle(sensorOrigin.position, parameters.detectionRadius, nestLayer);
+        if (!nest) { targetSteer = Vector2.zero; return; }
 
-        if (nest != null)
-        {
-            if (carriedItem != null) Destroy(carriedItem.gameObject);
-            nestReference.ReportFood();
-            carriedItem = null;
+        Vector2 toNest = ((Vector2)nest.transform.position - (Vector2)transform.position).normalized;
+        targetSteer = toNest * parameters.targetSteerStrength;
 
-            mode = AntMode.ToFood;
-            timeSinceLeftNest = Time.time;
-            StartTurn();
-        }
+        if (Vector2.Distance(transform.position, nest.transform.position) < parameters.collisionRadius)
+            DepositFood();
     }
 
-    void HandleCollisionSteering()
+    void DepositFood ()
     {
-        if (Time.time > obstacleForceResetTime)
+        if (carriedItem) Destroy(carriedItem.gameObject);
+        carriedItem = null;
+        nestRef?.ReportFood();
+
+        mode = AntMode.ToFood;
+        timeSinceLeftNest = Time.time;
+        StartTurnAround();
+    }
+
+    #endregion
+    
+    #region — Antennas + obstacles
+
+    void HandleCollisionSteering ()
+    {
+        if (Time.time > obstacleResetTime)
         {
             obstacleAvoidForce = Vector2.zero;
-            lastAntennaCollision = Antenna.None;
+            lastAntennaHit = Antenna.None;
         }
 
         Vector2 side = new Vector2(-heading.y, heading.x);
 
-        Vector2 leftOrigin  = (Vector2)sensorOrigin.position - side * parameters.antennaOffset;
+        Vector2 leftOrigin = (Vector2)sensorOrigin.position - side * parameters.antennaOffset;
         Vector2 rightOrigin = (Vector2)sensorOrigin.position + side * parameters.antennaOffset;
 
         RaycastHit2D hitL = Physics2D.Raycast(leftOrigin, heading, parameters.antennaDistance, obstacleMask);
@@ -330,40 +284,43 @@ public class AntAgent : MonoBehaviour
 
         if (hitL || hitR)
         {
-            if (hitL && lastAntennaCollision != Antenna.Right && (!hitR || hitL.distance < hitR.distance))
-            {
-                obstacleAvoidForce = side * parameters.collisionAvoidSteerStrength;
-                lastAntennaCollision = Antenna.Left;
-            }
-            if (hitR && lastAntennaCollision != Antenna.Left && (!hitL || hitR.distance < hitL.distance))
-            {
-                obstacleAvoidForce = -side * parameters.collisionAvoidSteerStrength;
-                lastAntennaCollision = Antenna.Right;
-            }
+            if (hitL && (lastAntennaHit != Antenna.Right) && (!hitR || hitL.distance < hitR.distance))
+            { obstacleAvoidForce = side * parameters.collisionAvoidSteerStrength; lastAntennaHit = Antenna.Left; }
+            if (hitR && (lastAntennaHit != Antenna.Left ) && (!hitL || hitR.distance < hitL.distance))
+            { obstacleAvoidForce = -side * parameters.collisionAvoidSteerStrength; lastAntennaHit = Antenna.Right;}
 
-            obstacleForceResetTime = Time.time + 0.5f;
+            obstacleResetTime = Time.time + 0.5f;
             randomSteer = obstacleAvoidForce.normalized * parameters.randomSteerStrength;
         }
     }
 
-    void EnforcePlayArea()
+    void StartTurnAround ()
     {
-        if (playArea == null) return;
+        isTurning = true;
+        turnEndTime = Time.time + 1.5f;
 
-        var rect = playArea.GetWorldRect();
-        Vector2 pos = transform.position;
-
-        if (!rect.Contains(pos))
-        {
-            Vector2 clamped = playArea.ClampToArea(pos);
-            transform.position = clamped;
-
-            Vector2 toCenter = ((Vector2)rect.center - clamped);
-            if (toCenter.sqrMagnitude > 1e-6f)
-            {
-                heading = toCenter.normalized;
-                StartTurn();
-            }
-        }
+        Vector2 baseDir = -heading;
+        Vector2 side = new Vector2(-baseDir.y, baseDir.x);
+        turnSteerForce = baseDir + side * (Random.value - .5f) * .4f;
     }
+
+    #endregion
+    
+    #region — Play Area
+
+    void EnforcePlayArea ()
+    {
+        if (!playArea) return;
+        var rect = playArea.GetWorldRect();
+
+        if (rect.Contains(transform.position)) return;
+
+        Vector2 clamped = playArea.ClampToArea(transform.position);
+        transform.position = clamped;
+
+        heading = ((Vector2)rect.center - clamped).normalized;
+        StartTurnAround();
+    }
+
+    #endregion
 }
