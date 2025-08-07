@@ -1,4 +1,4 @@
-using UnityEngine;
+/*using UnityEngine;
 
 [RequireComponent(typeof(Collider2D))]
 public class FoodPile : MonoBehaviour
@@ -63,4 +63,4 @@ public class FoodPile : MonoBehaviour
             visual.localScale = Vector3.one * s;
         }
     }
-}
+}*/

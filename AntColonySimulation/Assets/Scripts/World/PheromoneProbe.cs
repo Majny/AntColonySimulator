@@ -1,4 +1,4 @@
-using UnityEngine;
+/*using UnityEngine;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
@@ -21,7 +21,7 @@ public class PheromoneProbe : MonoBehaviour
         Vector2 worldPos;
 
 #if ENABLE_INPUT_SYSTEM
-        if (Mouse.current == null) return; // žádné ukazovací zařízení
+        if (Mouse.current == null) return;
         Vector2 screen = Mouse.current.position.ReadValue();
         worldPos = cam.ScreenToWorldPoint(new Vector3(screen.x, screen.y, 0f));
 #else
@@ -29,8 +29,9 @@ public class PheromoneProbe : MonoBehaviour
         worldPos = cam.ScreenToWorldPoint(screen);
 #endif
 
-        float s = field.SampleStrength(worldPos, agentParams.pheromoneSensorRadius, false);
+        float s = field.SampleStrength(worldPos, agentParams.pheromoneSensorSize, false);
         if (Time.frameCount % 10 == 0)
             Debug.Log($"Probe strength @ {worldPos}: {s:0.000}");
     }
 }
+*/
