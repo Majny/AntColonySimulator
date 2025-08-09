@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 6393391050391605129}
   - component: {fileID: 4057271177413724535}
   - component: {fileID: 2826901679249568911}
+  - component: {fileID: 1233702756608819904}
   m_Layer: 6
   m_Name: FoodMarker
   m_TagString: Untagged
@@ -124,3 +125,15 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
   m_Radius: 0.5
+--- !u!114 &1233702756608819904
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3642791913606600813}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2b59cb70f7e42589f4b53a8ab321b5b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

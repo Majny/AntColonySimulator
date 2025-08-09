@@ -28,4 +28,5 @@ public class AgentParameters : ScriptableObject
     public float collisionAvoidSteerStrength = 5f;
     public float antennaDistance = 0.25f;
     public float antennaOffset = 0.20f;
+
 }

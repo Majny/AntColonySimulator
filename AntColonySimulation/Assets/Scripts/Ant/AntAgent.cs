@@ -40,6 +40,7 @@ public class AntAgent : MonoBehaviour
     enum Antenna { None, Left, Right }
     Antenna lastAntennaHit = Antenna.None;
     float obstacleResetTime;
+    
 
     readonly Collider2D[] foodBuffer = new Collider2D[4];
 
@@ -214,17 +215,35 @@ public class AntAgent : MonoBehaviour
 
     void AcquireTargetFood ()
     {
-        int n = Physics2D.OverlapCircleNonAlloc(sensorOrigin.position, parameters.detectionRadius, foodBuffer, foodLayer);
+        int n = Physics2D.OverlapCircleNonAlloc(sensorOrigin.position,
+            parameters.detectionRadius,
+            foodBuffer, foodLayer);
         for (int i = 0; i < n; i++)
-            if (foodBuffer[i] && !foodBuffer[i].GetComponentInParent<AntAgent>())
-            {
-                targetFood = foodBuffer[i].transform; 
-                break;
-            }
+        {
+            var col = foodBuffer[i];
+            if (!col) continue;
+
+            if (col.GetComponentInParent<AntAgent>()) continue;
+
+            if (col.TryGetComponent(out FoodItem fi) && fi.taken) continue;
+
+            targetFood = col.transform;
+            break;
+        }
     }
+
 
     void PickupFood (Transform food)
     {
+        if (food.TryGetComponent(out FoodItem item))
+        {
+            if (!item.TryTake())
+            {
+                targetFood = null;
+                return;
+            }
+        }
+
         carriedItem = food;
         food.SetParent(head ? head : transform, true);
         food.localPosition = Vector3.zero;
@@ -239,17 +258,20 @@ public class AntAgent : MonoBehaviour
         StartTurnAround();
     }
 
+
     void HandleReturnHome ()
     {
-        Collider2D nest = Physics2D.OverlapCircle(sensorOrigin.position, parameters.detectionRadius, nestLayer);
+        Collider2D nest = Physics2D.OverlapCircle(sensorOrigin.position,
+            parameters.detectionRadius, nestLayer);
         if (!nest) { targetSteer = Vector2.zero; return; }
 
         Vector2 toNest = ((Vector2)nest.transform.position - (Vector2)transform.position).normalized;
         targetSteer = toNest * parameters.targetSteerStrength;
 
-        if (Vector2.Distance(transform.position, nest.transform.position) < parameters.collisionRadius)
+        if (nest.OverlapPoint(sensorOrigin.position))
             DepositFood();
     }
+
 
     void DepositFood ()
     {

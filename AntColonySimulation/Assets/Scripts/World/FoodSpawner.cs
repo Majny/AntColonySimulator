@@ -3,13 +3,13 @@ using UnityEngine;
 public class FoodSpawner : MonoBehaviour
 {
     public float radius = 3f;
-    public int amount = 20; 
+    public int amount = 20;
     public bool maintainAmount = true;
     public float timeBetweenSpawns = 2f;
     public GameObject foodPrefab;
 
     [Header("Clustering")]
-    public int blobCount = 3;
+    public int blobCount = 1;
     public int seed = 0;
 
     System.Random prng;
@@ -19,11 +19,11 @@ public class FoodSpawner : MonoBehaviour
     void Awake()
     {
         BuildBlobs();
+    }
 
-        for (int i = 0; i < amount; i++)
-            SpawnFood();
-
-        nextSpawnTime = Time.time + timeBetweenSpawns;
+    void Start()
+    {
+        Rebuild();
     }
 
     void Update()
@@ -35,6 +35,18 @@ public class FoodSpawner : MonoBehaviour
             SpawnFood();
             nextSpawnTime = Time.time + timeBetweenSpawns;
         }
+    }
+
+    [ContextMenu("Rebuild")]
+    public void Rebuild()
+    {
+        for (int i = transform.childCount - 1; i >= 0; i--)
+            Destroy(transform.GetChild(i).gameObject);
+
+        for (int i = 0; i < amount; i++)
+            SpawnFood();
+
+        nextSpawnTime = Time.time + timeBetweenSpawns;
     }
 
     void BuildBlobs()

@@ -12,6 +12,13 @@ public class LevelEditor : MonoBehaviour
     public GameObject nestPrefab;
     public GameObject dirtSegmentPrefab;
 
+    [Header("Scene refs (pheromones)")]
+    public PheromoneField homeField;
+    public PheromoneField foodField;
+
+    [Header("Food settings")]
+    public int foodAmount = 20;
+
     [Header("Dirt drawing")]
     public float initialDirtRadius = .6f;
     public float minDirtRadius = .2f, maxDirtRadius = 2f;
@@ -32,9 +39,7 @@ public class LevelEditor : MonoBehaviour
 
     void Awake()
     {
-        cam = Camera.main;
-        if (!cam) cam = FindFirstObjectByType<Camera>();
-
+        cam = Camera.main ? Camera.main : FindFirstObjectByType<Camera>();
         dirtRadius = initialDirtRadius;
 
         var go = new GameObject("PreviewCircle");
@@ -69,8 +74,8 @@ public class LevelEditor : MonoBehaviour
             switch (currentTool)
             {
                 case Tool.Food: Place(foodSpawnerPrefab, worldPos); break;
-                case Tool.Nest: Place(nestPrefab, worldPos); break;
-                case Tool.Dirt: BeginDirtStroke(worldPos); break;
+                case Tool.Nest: Place(nestPrefab,        worldPos); break;
+                case Tool.Dirt: BeginDirtStroke(worldPos);          break;
             }
         }
 
@@ -88,6 +93,11 @@ public class LevelEditor : MonoBehaviour
         }
     }
 
+    public void SetFoodAmount(int amount)
+    {
+        foodAmount = amount;
+    }
+
     public void SelectFood() => SetTool(Tool.Food);
     public void SelectNest() => SetTool(Tool.Nest);
     public void SelectDirt() => SetTool(Tool.Dirt);
@@ -99,7 +109,11 @@ public class LevelEditor : MonoBehaviour
         preview.enabled = false;
 
         foreach (var nest in FindObjectsByType<NestController>(FindObjectsSortMode.None))
+        {
+            if (homeField) nest.homeMarkersField = homeField;
+            if (foodField) nest.foodMarkersField = foodField;
             nest.enabled = true;
+        }
     }
 
     void SetTool(Tool t)
@@ -114,11 +128,21 @@ public class LevelEditor : MonoBehaviour
     void Place(GameObject prefab, Vector2 pos)
     {
         if (!prefab) return;
+
         var go = Instantiate(prefab, pos, Quaternion.identity);
         spawnedInEdit.Add(go);
 
         if (go.TryGetComponent<NestController>(out var nc))
+        {
+            if (homeField) nc.homeMarkersField = homeField;
+            if (foodField) nc.foodMarkersField = foodField;
             nc.enabled = false;
+        }
+
+        if (go.TryGetComponent<FoodSpawner>(out var fs))
+        {
+            fs.amount = foodAmount;
+        }
     }
 
     void BeginDirtStroke(Vector2 start)
@@ -144,6 +168,6 @@ public class LevelEditor : MonoBehaviour
     static bool IsPointerOverUI()
     {
         if (EventSystem.current == null) return false;
-        return EventSystem.current.IsPointerOverGameObject(); 
+        return EventSystem.current.IsPointerOverGameObject();
     }
 }
