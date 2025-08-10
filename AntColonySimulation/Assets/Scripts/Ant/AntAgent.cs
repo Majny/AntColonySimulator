@@ -71,6 +71,8 @@ public class AntAgent : MonoBehaviour
 
     void Update ()
     {
+        MaybeRefreshTrailWhenTouchingNest();
+
         PlacePheromoneIfNeeded();
         HandleRandomSteering();
         HandlePheromoneSteering();
@@ -81,6 +83,24 @@ public class AntAgent : MonoBehaviour
         HandleCollisionSteering();
         IntegrateMovement();
     }
+
+    void MaybeRefreshTrailWhenTouchingNest()
+    {
+        if (mode != AntMode.ToFood) return; 
+        if (!sensorOrigin) sensorOrigin = transform;
+
+        Collider2D nest = Physics2D.OverlapCircle(
+            sensorOrigin.position,
+            parameters.pickupDistance * 1.25f,
+            nestLayer
+        );
+        if (!nest) return;
+        if (!nest.OverlapPoint(sensorOrigin.position)) return;
+
+        timeSinceLeftNest = Time.time;
+        lastPheromonePos = transform.position;
+    }
+
 
     void LateUpdate() => EnforcePlayArea();
 
@@ -102,15 +122,57 @@ public class AntAgent : MonoBehaviour
         Vector2 dv = steer * parameters.maxSpeed;
         velocity = Vector2.Lerp(velocity, dv, parameters.acceleration * Time.deltaTime);
 
-        float probe = Mathf.Max(parameters.collisionRadius, Mathf.Max(parameters.antennaDistance, velocity.magnitude * Time.deltaTime));
+        float dt = Time.deltaTime;
+        Vector2 move = velocity * dt;
 
+        float r   = Mathf.Max(parameters.collisionRadius, 0.05f);
+        float eps = 0.003f;
+        float bounce = 0.80f;
+
+        Collider2D inside = Physics2D.OverlapCircle(transform.position, r * 0.98f, obstacleMask);
+        if (inside)
+        {
+            Vector2 cp = inside.ClosestPoint(transform.position);
+            Vector2 n = (Vector2)transform.position - cp;
+            if (n.sqrMagnitude < 1e-6f) n = heading;
+            n.Normalize();
+
+            transform.position = cp + n * (r + eps);
+            velocity = Reflect(velocity, n) * bounce;
+            heading = velocity.sqrMagnitude > 1e-6f ? velocity.normalized : heading;
+            transform.right = heading;
+            return;
+        }
+
+        RaycastHit2D hit = Physics2D.CircleCast(transform.position, r, heading, move.magnitude + eps, obstacleMask);
+        if (hit.collider)
+        {
+            Vector2 n = hit.normal;
+            Vector2 posAtContact = hit.point + n * (r + eps);
+            transform.position = posAtContact;
+
+            velocity = Reflect(velocity, n) * bounce;
+            heading  = velocity.sqrMagnitude > 1e-6f ? velocity.normalized : heading;
+            transform.right = heading;
+
+            randomSteer += UnityEngine.Random.insideUnitCircle * 0.03f;
+            return;
+        }
+
+        float probe = Mathf.Max(parameters.collisionRadius, Mathf.Max(parameters.antennaDistance, velocity.magnitude * dt));
         if (Physics2D.Raycast(transform.position, heading, probe, obstacleMask))
             StartTurnAround();
 
-        transform.position += (Vector3)(velocity * Time.deltaTime);
-        heading = velocity.normalized;
+        transform.position += (Vector3)move;
+        heading = velocity.sqrMagnitude > 1e-6f ? velocity.normalized : heading;
         transform.right = heading;
     }
+
+    static Vector2 Reflect(Vector2 v, Vector2 n)
+    {
+        return v - 2f * Vector2.Dot(v, n) * n;
+    }
+
 
     #endregion
     
