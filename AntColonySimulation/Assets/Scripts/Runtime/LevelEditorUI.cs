@@ -9,8 +9,13 @@ public class LevelEditorUI : MonoBehaviour
 
     [Header("UI refs")]
     public GameObject editorMenuPanel;
+
     public Slider foodAmountSlider;
     public TMP_InputField foodAmountInput;
+
+    public TMP_InputField nestAntsInput;
+
+    public Slider dirtRadiusSlider;
 
     bool isUpdatingUI;
 
@@ -20,15 +25,39 @@ public class LevelEditorUI : MonoBehaviour
         {
             foodAmountSlider.wholeNumbers = true;
             foodAmountSlider.value = editor.foodAmount;
-            foodAmountSlider.onValueChanged.AddListener(v => OnSliderChanged(Mathf.RoundToInt(v)));
+            foodAmountSlider.onValueChanged.AddListener(v => OnFoodSliderChanged(Mathf.RoundToInt(v)));
         }
         if (foodAmountInput)
         {
             foodAmountInput.contentType = TMP_InputField.ContentType.IntegerNumber;
             foodAmountInput.text = editor.foodAmount.ToString();
-            foodAmountInput.onEndEdit.AddListener(OnInputEndEdit);
-            foodAmountInput.onSubmit.AddListener(OnInputEndEdit);
+            foodAmountInput.onEndEdit.AddListener(OnFoodInputEndEdit);
+            foodAmountInput.onSubmit.AddListener(OnFoodInputEndEdit);
         }
+
+        if (nestAntsInput)
+        {
+            nestAntsInput.contentType = TMP_InputField.ContentType.IntegerNumber;
+            nestAntsInput.text = editor.nestInitialAgents.ToString();
+            nestAntsInput.onEndEdit.AddListener(OnNestAntsEndEdit);
+            nestAntsInput.onSubmit.AddListener(OnNestAntsEndEdit);
+        }
+
+        if (dirtRadiusSlider)
+        {
+            dirtRadiusSlider.minValue = editor.GetDirtRadiusMin();
+            dirtRadiusSlider.maxValue = editor.GetDirtRadiusMax();
+            dirtRadiusSlider.wholeNumbers = false;
+            dirtRadiusSlider.value = editor.GetDirtRadius();
+            dirtRadiusSlider.onValueChanged.AddListener(OnDirtRadiusSliderChanged);
+        }
+
+        editor.OnDirtRadiusChanged += SyncDirtSliderFromEditor;
+    }
+
+    void OnDestroy()
+    {
+        if (editor != null) editor.OnDirtRadiusChanged -= SyncDirtSliderFromEditor;
     }
 
     void Update()
@@ -42,7 +71,7 @@ public class LevelEditorUI : MonoBehaviour
     public void OnDirtBtn() => editor.SelectDirt();
     public void OnStartBtn() => editor.StartSimulation();
 
-    void OnSliderChanged(int val)
+    void OnFoodSliderChanged(int val)
     {
         if (isUpdatingUI) return;
         isUpdatingUI = true;
@@ -51,10 +80,14 @@ public class LevelEditorUI : MonoBehaviour
         isUpdatingUI = false;
     }
 
-    void OnInputEndEdit(string text)
+    void OnFoodInputEndEdit(string text)
     {
         if (isUpdatingUI) return;
-        if (!int.TryParse(text, out var val)) { foodAmountInput.text = editor.foodAmount.ToString(); return; }
+        if (!int.TryParse(text, out var val))
+        {
+            if (foodAmountInput) foodAmountInput.text = editor.foodAmount.ToString();
+            return;
+        }
 
         if (foodAmountSlider)
             val = Mathf.Clamp(val, (int)foodAmountSlider.minValue, (int)foodAmountSlider.maxValue);
@@ -63,6 +96,39 @@ public class LevelEditorUI : MonoBehaviour
         editor.SetFoodAmount(val);
         if (foodAmountSlider) foodAmountSlider.value = val;
         if (foodAmountInput)  foodAmountInput.text  = val.ToString();
+        isUpdatingUI = false;
+    }
+
+    void OnNestAntsEndEdit(string text)
+    {
+        if (isUpdatingUI) return;
+        if (!int.TryParse(text, out var val))
+        {
+            if (nestAntsInput) nestAntsInput.text = editor.nestInitialAgents.ToString();
+            return;
+        }
+
+        val = Mathf.Max(0, val);
+
+        isUpdatingUI = true;
+        editor.SetNestInitialAgents(val);
+        if (nestAntsInput) nestAntsInput.text = val.ToString();
+        isUpdatingUI = false;
+    }
+
+    void OnDirtRadiusSliderChanged(float v)
+    {
+        if (isUpdatingUI) return;
+        isUpdatingUI = true;
+        editor.SetDirtRadius(v);
+        isUpdatingUI = false;
+    }
+
+    void SyncDirtSliderFromEditor(float current)
+    {
+        if (isUpdatingUI) return;
+        isUpdatingUI = true;
+        if (dirtRadiusSlider) dirtRadiusSlider.value = current;
         isUpdatingUI = false;
     }
 }

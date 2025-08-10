@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -19,12 +20,30 @@ public class LevelEditor : MonoBehaviour
     [Header("Food settings")]
     public int foodAmount = 20;
 
+    [Header("Nest settings")]
+    [Tooltip("Kolik mravenců se má spawnout v každém NOVĚ položeném hnízdě.")]
+    public int nestInitialAgents = 10;
+
     [Header("Dirt drawing")]
     public float initialDirtRadius = .6f;
     public float minDirtRadius = .2f, maxDirtRadius = 2f;
 
+    [Header("Dirt collision")]
+    [Tooltip("Vrstva, na které budou dirt segmenty. Musí být zahrnutá v AntAgent.obstacleMask.")]
+    public string dirtObstacleLayerName = "Obstacle";
+    [Tooltip("Pokud true, dirt je pouze trigger (mravenci projdou). Pro pevnou zeď nech false.")]
+    public bool dirtIsTrigger = false;
+
+    [Header("Dirt brush tuning")]
+    [Tooltip("Krok mezi body při tažení (násobek poloměru). Menší = hustší tah.")]
+    public float strokeStepFactor = 0.5f;
+    [Tooltip("Kolik % navíc zvětšit collider vůči vizuálnímu poloměru.")]
+    public float colliderOverlap = 1.05f;
+
     [Header("Runtime-UI preview")]
     public Sprite previewCircleSprite;
+
+    public event Action<float> OnDirtRadiusChanged;
 
     Tool currentTool = Tool.None;
     bool editing = true;
@@ -40,14 +59,16 @@ public class LevelEditor : MonoBehaviour
     void Awake()
     {
         cam = Camera.main ? Camera.main : FindFirstObjectByType<Camera>();
-        dirtRadius = initialDirtRadius;
-
-        var go = new GameObject("PreviewCircle");
-        preview = go.AddComponent<SpriteRenderer>();
-        if (previewCircleSprite) preview.sprite = previewCircleSprite;
-        preview.sortingOrder = 9000;
-        preview.enabled = false;
+        EnsurePreview();
+        SetDirtRadius(initialDirtRadius);
+        if (preview) preview.enabled = false;
         UpdatePreviewScale();
+    }
+
+    void OnEnable()
+    {
+        EnsurePreview();
+        if (preview) preview.enabled = false;
     }
 
     void Update()
@@ -61,13 +82,11 @@ public class LevelEditor : MonoBehaviour
         {
             float scroll = Mouse.current.scroll.ReadValue().y;
             if (Mathf.Abs(scroll) > 0.01f)
-            {
-                dirtRadius = Mathf.Clamp(dirtRadius + scroll * .1f, minDirtRadius, maxDirtRadius);
-                UpdatePreviewScale();
-            }
+                SetDirtRadius(dirtRadius + scroll * .1f);
         }
 
-        preview.transform.position = worldPos;
+        EnsurePreview();
+        if (preview) preview.transform.position = worldPos;
 
         if (Mouse.current.leftButton.wasPressedThisFrame && !IsPointerOverUI())
         {
@@ -81,7 +100,7 @@ public class LevelEditor : MonoBehaviour
 
         if (currentTool == Tool.Dirt && drawing)
         {
-            float step = dirtRadius * .6f;
+            float step = dirtRadius * Mathf.Max(0.05f, strokeStepFactor);
             if (Vector2.Distance(worldPos, lastDirtPoint) >= step)
             {
                 SpawnDirtSegment(worldPos);
@@ -93,9 +112,24 @@ public class LevelEditor : MonoBehaviour
         }
     }
 
-    public void SetFoodAmount(int amount)
+    public float GetDirtRadius() => dirtRadius;
+    public float GetDirtRadiusMin() => minDirtRadius;
+    public float GetDirtRadiusMax() => maxDirtRadius;
+
+    public void SetDirtRadius(float value)
     {
-        foodAmount = amount;
+        float clamped = Mathf.Clamp(value, minDirtRadius, maxDirtRadius);
+        if (Mathf.Approximately(clamped, dirtRadius)) return;
+        dirtRadius = clamped;
+        UpdatePreviewScale();
+        OnDirtRadiusChanged?.Invoke(dirtRadius);
+    }
+
+    public void SetFoodAmount(int amount) => foodAmount = amount;
+
+    public void SetNestInitialAgents(int count)
+    {
+        nestInitialAgents = Mathf.Max(0, count);
     }
 
     public void SelectFood() => SetTool(Tool.Food);
@@ -106,7 +140,7 @@ public class LevelEditor : MonoBehaviour
     {
         editing = false;
         currentTool = Tool.None;
-        preview.enabled = false;
+        if (preview) preview.enabled = false;
 
         foreach (var nest in FindObjectsByType<NestController>(FindObjectsSortMode.None))
         {
@@ -119,11 +153,28 @@ public class LevelEditor : MonoBehaviour
     void SetTool(Tool t)
     {
         currentTool = t;
-        preview.enabled = (t == Tool.Dirt) && preview.sprite != null;
+        EnsurePreview();
+        if (preview) preview.enabled = (t == Tool.Dirt) && preview.sprite != null;
         UpdatePreviewScale();
     }
 
-    void UpdatePreviewScale() => preview.transform.localScale = Vector3.one * dirtRadius * 2f;
+    void UpdatePreviewScale()
+    {
+        if (!preview) return;
+        preview.transform.localScale = Vector3.one * dirtRadius * 2f;
+    }
+
+    void EnsurePreview()
+    {
+        if (preview != null) return;
+        var go = GameObject.Find("PreviewCircle");
+        if (!go) go = new GameObject("PreviewCircle");
+        preview = go.GetComponent<SpriteRenderer>();
+        if (!preview) preview = go.AddComponent<SpriteRenderer>();
+        if (previewCircleSprite) preview.sprite = previewCircleSprite;
+        preview.sortingOrder = 9000;
+        preview.enabled = false;
+    }
 
     void Place(GameObject prefab, Vector2 pos)
     {
@@ -136,6 +187,9 @@ public class LevelEditor : MonoBehaviour
         {
             if (homeField) nc.homeMarkersField = homeField;
             if (foodField) nc.foodMarkersField = foodField;
+
+            nc.initialAgents = nestInitialAgents;
+
             nc.enabled = false;
         }
 
@@ -157,11 +211,16 @@ public class LevelEditor : MonoBehaviour
         if (!dirtSegmentPrefab) return;
 
         var seg = Instantiate(dirtSegmentPrefab, pos, Quaternion.identity);
+
+        int layer = LayerMask.NameToLayer(dirtObstacleLayerName);
+        if (layer >= 0) seg.layer = layer;
+
+        var col = seg.GetComponent<CircleCollider2D>();
+        if (!col) col = seg.AddComponent<CircleCollider2D>();
+        col.isTrigger = dirtIsTrigger;
+        col.radius = dirtRadius * Mathf.Max(1f, colliderOverlap);
+
         seg.transform.localScale = Vector3.one * dirtRadius * 2f;
-
-        if (seg.TryGetComponent(out CircleCollider2D col))
-            col.radius = dirtRadius;
-
         spawnedInEdit.Add(seg);
     }
 
