@@ -1,205 +1,176 @@
-// Assets/Scripts/Runtime/PlayAreaDirtBorder.cs
-using System.Collections.Generic;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 [ExecuteAlways]
 [DisallowMultipleComponent]
-public class PlayAreaDirtBorder : MonoBehaviour
+public class PlayAreaRectBoundary : MonoBehaviour
 {
     [Header("Authoritative area")]
-    public PheromoneField playArea;            // ← přetáhni sem svůj PheromoneField (60 x 35)
+    public PheromoneField playArea;
 
-    [Header("Dirt prefab (vizuál + collider)")]
-    public GameObject dirtSegmentPrefab;       // ← stejný prefab jako pro ruční hlínu (má CircleCollider2D)
-    public float segmentRadius = 0.6f;         // tloušťka lemu = poloměr segmentu
-    public float segmentSpacing = 0.45f;       // vzdálenost mezi středy (<= 2*radius => překryv)
-
-    [Header("Irregularity (noise)")]
-    public float jitterAmplitude = 0.25f;      // max vychýlení dovnitř/ven
-    public float jitterFrequency = 0.15f;      // frekvence Perlinu (menší = hladší)
-    public int seed = 12345;
-
-    [Header("Collision & layer")]
+    [Header("Collision walls")]
     public string obstacleLayerName = "Obstacle";
+    public float wallInset = 0.05f;
+    [Min(0.001f)] public float wallThickness = 0.35f;
 
-    [Header("Build controls")]
-    public bool rebuildOnEnable = true;
-    public bool clearOnDisable = true;
+    [Header("Optional outline (for player)")]
+    public bool showOutline = false;
+    public Color outlineColor = Color.black;
+    [Min(0.001f)] public float outlineWidth = 0.06f;
+    public int sortingOrder = 50;
 
-    const string ROOT = "Perimeter__Auto";
-    readonly List<Transform> spawned = new();
+    [Header("Debug")]
+    public bool showPlayAreaGizmo = false;
 
-    void OnEnable()
-    {
-        if (rebuildOnEnable) Rebuild();
-    }
+    Transform wallsRoot;
+    Transform outlineRoot;
+    BoxCollider2D[] walls = new BoxCollider2D[4];
 
-    void OnDisable()
-    {
-        if (clearOnDisable) Clear();
-    }
+    Rect lastRect; float lastInset, lastThickness; bool lastShowOutline;
+
+#if UNITY_EDITOR
+    bool pendingRebuild;
+#endif
+
+    void OnEnable() => ForceRebuild();
 
 #if UNITY_EDITOR
     void OnValidate()
     {
-        segmentRadius = Mathf.Max(0.05f, segmentRadius);
-        segmentSpacing = Mathf.Clamp(segmentSpacing, 0.05f, segmentRadius * 2f);
-        if (!Application.isPlaying) Rebuild();
+        wallThickness = Mathf.Max(0.001f, wallThickness);
+        outlineWidth = Mathf.Max(0.001f, outlineWidth);
+        if (!Application.isPlaying)
+        {
+            pendingRebuild = true;
+            EditorApplication.delayCall += () => { if (this && pendingRebuild){ pendingRebuild=false; ForceRebuild(); } };
+        }
     }
 #endif
 
-    [ContextMenu("Rebuild border")]
-    public void Rebuild()
-    {
-        Clear();
-        if (!playArea || !dirtSegmentPrefab) return;
-
-        // „Pravda“: vnitřní hranice hřiště = rect
-        var rect = playArea.GetWorldRect();
-
-        // Projdeme celý obvod a nasypeme segmenty v daném kroku
-        float perim = rect.width * 2f + rect.height * 2f;
-        float step = Mathf.Max(0.05f, segmentSpacing);
-        int count = Mathf.CeilToInt(perim / step);
-
-        // Pozice na obvodu (t) -> bod + normála ven (pro jitter)
-        // Topologie: jdeme po hranách v pořadí Left→Top→Right→Bottom
-        System.Random prng = new System.Random(seed);
-        int obstacleLayer = LayerMask.NameToLayer(obstacleLayerName);
-
-        Transform root = EnsureRoot();
-
-        float w = rect.width;
-        float h = rect.height;
-        Vector2 c = rect.center;
-        Vector2 p0 = new(rect.xMin, rect.yMin);
-        Vector2 p1 = new(rect.xMin, rect.yMax);
-        Vector2 p2 = new(rect.xMax, rect.yMax);
-        Vector2 p3 = new(rect.xMax, rect.yMin);
-
-        // Helper na sampling šumu stabilně podél hran
-        float kx = jitterFrequency;
-        float ky = jitterFrequency * 1.37f;
-
-        // Vygeneruj body po hranách
-        var path = new List<(Vector2 pos, Vector2 normal)>(count + 4);
-        // Left edge (upwards)
-        SampleEdge(path, p0, p1, new Vector2(-1, 0), kx, ky);
-        // Top edge (rightwards)
-        SampleEdge(path, p1, p2, new Vector2(0, 1), kx, ky);
-        // Right edge (downwards)
-        SampleEdge(path, p2, p3, new Vector2(1, 0), kx, ky);
-        // Bottom edge (leftwards)
-        SampleEdge(path, p3, p0, new Vector2(0, -1), kx, ky);
-
-        // Rozmísti segmenty
-        float acc = 0f;
-        Vector2 cur = path[0].pos;
-        int idx = 0;
-        for (int i = 1; i < path.Count + 1; i++)
-        {
-            var a = path[(i - 1) % path.Count];
-            var b = path[i % path.Count];
-
-            float segLen = Vector2.Distance(a.pos, b.pos);
-            Vector2 dir = (segLen > 1e-4f) ? (b.pos - a.pos) / segLen : Vector2.right;
-
-            while (acc + segLen >= step)
-            {
-                float t = (step - acc) / segLen;
-                Vector2 basePos = a.pos + dir * (t * segLen);
-
-                // jitter dovnitř/ven podle normály hranice + Perlin
-                float noise = Mathf.PerlinNoise(basePos.x * kx + seed * 0.01931f,
-                                                basePos.y * ky + seed * 0.00777f);
-                float centerBias = (noise - 0.5f) * 2f; // -1..1
-                Vector2 nrm = Vector2.zero;
-                // najdi nejbližší hranu kvůli normále (rychlý hack: porovnej vzdál. od center k okrajům)
-                if (Mathf.Abs(basePos.x - rect.xMin) < 0.001f) nrm = Vector2.left;
-                else if (Mathf.Abs(basePos.x - rect.xMax) < 0.001f) nrm = Vector2.right;
-                else if (Mathf.Abs(basePos.y - rect.yMax) < 0.001f) nrm = Vector2.up;
-                else if (Mathf.Abs(basePos.y - rect.yMin) < 0.001f) nrm = Vector2.down;
-                else nrm = Vector2.zero;
-
-                Vector2 jitter = nrm * (centerBias * jitterAmplitude);
-
-                Vector2 pos = basePos + jitter;
-
-                // posuň lehce dovnitř, ať vnitřní hrana pásu nekoliduje s rectem
-                pos -= nrm * (segmentRadius * 0.2f);
-
-                // spawn
-                var go = Instantiate(dirtSegmentPrefab, pos, Quaternion.identity, root);
-                go.name = $"seg_{idx++:0000}";
-                if (obstacleLayer >= 0) go.layer = obstacleLayer;
-
-                // sjednoť scale + collider radius pro konzistentní tloušťku
-                go.transform.localScale = Vector3.one * (segmentRadius * 2f);
-
-                var circle = go.GetComponent<CircleCollider2D>();
-                if (circle) circle.radius = segmentRadius;
-
-                spawned.Add(go.transform);
-                acc = acc + segLen - step;
-                a.pos = basePos; // pokračuj od posledního místa
-                segLen = Vector2.Distance(a.pos, b.pos);
-            }
-            acc += segLen;
-        }
-    }
-
-    static void SampleEdge(List<(Vector2 pos, Vector2 normal)> outPts,
-                           Vector2 a, Vector2 b, Vector2 outward,
-                           float kx, float ky)
-    {
-        float len = Vector2.Distance(a, b);
-        int steps = Mathf.Max(2, Mathf.CeilToInt(len / 0.25f)); // hustota vzorku
-        Vector2 dir = (len > 1e-4f) ? (b - a) / steps : Vector2.right;
-
-        for (int i = 0; i <= steps; i++)
-        {
-            Vector2 p = a + dir * i;
-            outPts.Add((p, outward));
-        }
-    }
-
-    [ContextMenu("Clear border")]
-    public void Clear()
-    {
-        spawned.Clear();
-        var root = transform.Find(ROOT);
-        if (!root) return;
-
-        for (int i = root.childCount - 1; i >= 0; i--)
-        {
-#if UNITY_EDITOR
-            if (!Application.isPlaying) DestroyImmediate(root.GetChild(i).gameObject);
-            else Destroy(root.GetChild(i).gameObject);
-#else
-            Destroy(root.GetChild(i).gameObject);
-#endif
-        }
-    }
-
-    Transform EnsureRoot()
-    {
-        var t = transform.Find(ROOT);
-        if (!t)
-        {
-            var g = new GameObject(ROOT);
-            g.transform.SetParent(transform, false);
-            t = g.transform;
-        }
-        return t;
-    }
-
-#if UNITY_EDITOR
-    void OnDrawGizmosSelected()
+    void LateUpdate()
     {
         if (!playArea) return;
         var r = playArea.GetWorldRect();
-        Gizmos.color = new Color(1f,0.8f,0.2f,0.5f);
-        Gizmos.DrawWireCube(r.center, r.size);
+        if (r != lastRect || !Mathf.Approximately(wallInset,lastInset) || !Mathf.Approximately(wallThickness,lastThickness) || lastShowOutline != showOutline)
+            ForceRebuild();
+    }
+
+    [ContextMenu("Rebuild")]
+    public void ForceRebuild()
+    {
+        if (!playArea) return;
+        CleanupLegacy();
+        EnsureChildren();
+        BuildWalls();
+        BuildOutline();
+
+        lastRect = playArea.GetWorldRect();
+        lastInset = wallInset;
+        lastThickness = wallThickness;
+        lastShowOutline = showOutline;
+    }
+
+    void CleanupLegacy()
+    {
+        string[] names = { "__BorderCollider__", "__BorderVisual__", "__Composite__", "__Edge__" };
+        foreach (var n in names){ var t = transform.Find(n); if (t) SafeDestroy(t.gameObject); }
+    }
+
+    static void SafeDestroy(Object o)
+    {
+        if (!o) return;
+        if (Application.isPlaying) Object.Destroy(o);
+        else Object.DestroyImmediate(o);
+    }
+
+    void EnsureChildren()
+    {
+        wallsRoot = transform.Find("__Walls__");
+        if (!wallsRoot){ wallsRoot = new GameObject("__Walls__").transform; wallsRoot.SetParent(transform,false); }
+        for (int i = wallsRoot.childCount-1; i>=0; i--) SafeDestroy(wallsRoot.GetChild(i).gameObject);
+
+        int wallLayer = LayerMask.NameToLayer(obstacleLayerName);
+        for (int i=0;i<4;i++)
+        {
+            var go = new GameObject($"Wall_{i}");
+            go.transform.SetParent(wallsRoot,false);
+            if (wallLayer>=0) go.layer = wallLayer;
+            walls[i] = go.AddComponent<BoxCollider2D>();
+        }
+
+        outlineRoot = transform.Find("__Outline__");
+        if (!outlineRoot){ outlineRoot = new GameObject("__Outline__").transform; outlineRoot.SetParent(transform,false); }
+        else for (int i = outlineRoot.childCount-1; i>=0; i--) SafeDestroy(outlineRoot.GetChild(i).gameObject);
+    }
+
+    void BuildWalls()
+    {
+        var r = playArea.GetWorldRect();
+        r.xMin += wallInset; r.xMax -= wallInset; r.yMin += wallInset; r.yMax -= wallInset;
+
+        float t = wallThickness; Vector2 c = r.center;
+
+        Vector2[] centers =
+        {
+            new(r.xMin - t*0.5f, c.y),
+            new(r.xMax + t*0.5f, c.y),
+            new(c.x, r.yMax + t*0.5f),
+            new(c.x, r.yMin - t*0.5f)
+        };
+        Vector2[] sizes =
+        {
+            new(t, r.height + t*2f),
+            new(t, r.height + t*2f),
+            new(r.width + t*2f, t),
+            new(r.width + t*2f, t)
+        };
+
+        for (int i=0;i<4;i++)
+        {
+            walls[i].offset = Vector2.zero;
+            walls[i].size = sizes[i];
+            walls[i].transform.localPosition = Vector3.zero;
+            walls[i].transform.position = centers[i];
+        }
+    }
+
+    void BuildOutline()
+    {
+        if (!showOutline) return;
+
+        var r = playArea.GetWorldRect();
+        float eps = Mathf.Min(outlineWidth * 0.5f, 0.02f);
+        r.xMin += eps; r.xMax -= eps; r.yMin += eps; r.yMax -= eps;
+
+        var go = new GameObject("Border");
+        go.transform.SetParent(outlineRoot,false);
+        var lr = go.AddComponent<LineRenderer>();
+        lr.useWorldSpace = true;
+        lr.loop = true;
+        lr.widthMultiplier = outlineWidth;
+        lr.material = new Material(Shader.Find("Sprites/Default"));
+        lr.startColor = lr.endColor = outlineColor;
+        lr.sortingOrder = sortingOrder;
+
+        lr.positionCount = 4;
+        lr.SetPositions(new Vector3[]
+        {
+            new(r.xMin, r.yMin, 0),
+            new(r.xMax, r.yMin, 0),
+            new(r.xMax, r.yMax, 0),
+            new(r.xMin, r.yMax, 0)
+        });
+    }
+
+#if UNITY_EDITOR
+    void OnDrawGizmos()
+    {
+        if (!showPlayAreaGizmo || !playArea) return;
+        Gizmos.color = new Color(0f, 1f, 0.4f, 0.35f);
+        var rr = playArea.GetWorldRect();
+        Gizmos.DrawWireCube(rr.center, rr.size);
     }
 #endif
 }
