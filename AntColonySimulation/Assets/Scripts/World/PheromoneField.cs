@@ -101,50 +101,8 @@ public class PheromoneField : MonoBehaviour
             particleDisplay.Emit(emitParams, 1);
         }
     }
-
-    public int GetAllInCircle(Entry[] result, Vector2 centre)
-    {
-        Vector2Int cellCoord = CellCoordFromPos(centre);
-        int i = 0;
-        float now = Time.time;
-        float evap = EvapTime;
-        bool infinite = evap <= 0f || float.IsInfinity(evap);
-
-        for (int oy = -1; oy <= 1; oy++)
-        {
-            for (int ox = -1; ox <= 1; ox++)
-            {
-                int cx = cellCoord.x + ox;
-                int cy = cellCoord.y + oy;
-                if (cx < 0 || cx >= numCellsX || cy < 0 || cy >= numCellsY) continue;
-
-                Cell cell = cells[cx, cy];
-                var node = cell.entries.First;
-                while (node != null)
-                {
-                    var cur = node.Value;
-                    var next = node.Next;
-
-                    if (!infinite)
-                    {
-                        float age = now - cur.creationTime;
-                        if (age > evap) { cell.entries.Remove(node); node = next; continue; }
-                    }
-
-                    if ((cur.position - centre).sqrMagnitude < sqrPerceptionRadius)
-                    {
-                        if (i >= result.Length) return result.Length;
-                        result[i++] = cur;
-                    }
-                    node = next;
-                }
-            }
-        }
-        return i;
-    }
-
-    public void AddPheromone(Vector2 worldPos, float strength, bool toHome) => Add(worldPos, strength);
-
+    
+    
     public float SampleStrength(Vector2 worldPos, float radius, bool toHome)
     {
         float total = 0f;
