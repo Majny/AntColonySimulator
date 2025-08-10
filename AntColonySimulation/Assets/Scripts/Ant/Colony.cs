@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 
 [DisallowMultipleComponent]
@@ -18,7 +19,7 @@ public class NestController : MonoBehaviour
 
     [Header("Graphics (optional)")]
     public Transform graphic;
-    public TextMesh foodCounter;
+    public TextMeshPro foodCounter;
 
     int foodCollected;
 
