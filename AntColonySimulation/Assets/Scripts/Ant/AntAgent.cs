@@ -1,6 +1,5 @@
 using UnityEngine;
 
-
 public class AntAgent : MonoBehaviour
 {
     [Header("Config & refs")]
@@ -40,9 +39,10 @@ public class AntAgent : MonoBehaviour
     enum Antenna { None, Left, Right }
     Antenna lastAntennaHit = Antenna.None;
     float obstacleResetTime;
-    
 
     readonly Collider2D[] foodBuffer = new Collider2D[4];
+
+    int myTeamId = -1;
 
     #region — Initializace
 
@@ -51,6 +51,8 @@ public class AntAgent : MonoBehaviour
         nestRef = nest;
         homeField = home;
         foodField = food;
+
+        myTeamId = (nestRef != null) ? nestRef.TeamId : -1;
 
         if (!sensorOrigin) sensorOrigin = transform;
 
@@ -86,26 +88,29 @@ public class AntAgent : MonoBehaviour
 
     void MaybeRefreshTrailWhenTouchingNest()
     {
-        if (mode != AntMode.ToFood) return; 
+        if (mode != AntMode.ToFood) return;
         if (!sensorOrigin) sensorOrigin = transform;
+        if (!nestRef) return;
 
-        Collider2D nest = Physics2D.OverlapCircle(
-            sensorOrigin.position,
-            parameters.pickupDistance * 1.25f,
-            nestLayer
-        );
-        if (!nest) return;
-        if (!nest.OverlapPoint(sensorOrigin.position)) return;
+        Collider2D nestCol = nestRef.GetComponentInChildren<Collider2D>();
+        bool atNest = false;
+
+        if (nestCol)
+            atNest = nestCol.OverlapPoint(sensorOrigin.position);
+        else
+            atNest = Vector2.Distance(sensorOrigin.position, nestRef.transform.position)
+                     <= parameters.pickupDistance * 1.25f;
+
+        if (!atNest) return;
 
         timeSinceLeftNest = Time.time;
         lastPheromonePos = transform.position;
     }
 
-
     void LateUpdate() => EnforcePlayArea();
 
     #endregion
-    
+
     #region — Movement
 
     void IntegrateMovement ()
@@ -125,7 +130,7 @@ public class AntAgent : MonoBehaviour
         float dt = Time.deltaTime;
         Vector2 move = velocity * dt;
 
-        float r   = Mathf.Max(parameters.collisionRadius, 0.05f);
+        float r = Mathf.Max(parameters.collisionRadius, 0.05f);
         float eps = 0.003f;
         float bounce = 0.80f;
 
@@ -152,7 +157,7 @@ public class AntAgent : MonoBehaviour
             transform.position = posAtContact;
 
             velocity = Reflect(velocity, n) * bounce;
-            heading  = velocity.sqrMagnitude > 1e-6f ? velocity.normalized : heading;
+            heading = velocity.sqrMagnitude > 1e-6f ? velocity.normalized : heading;
             transform.right = heading;
 
             randomSteer += UnityEngine.Random.insideUnitCircle * 0.03f;
@@ -173,9 +178,8 @@ public class AntAgent : MonoBehaviour
         return v - 2f * Vector2.Dot(v, n) * n;
     }
 
-
     #endregion
-    
+
     #region — Random Steering
 
     void HandleRandomSteering ()
@@ -205,7 +209,7 @@ public class AntAgent : MonoBehaviour
     }
 
     #endregion
-    
+
     #region — Pheromones
 
     void PlacePheromoneIfNeeded ()
@@ -228,7 +232,7 @@ public class AntAgent : MonoBehaviour
     }
 
     #endregion
-    
+
     #region — Pheromone Steering
 
     void HandlePheromoneSteering ()
@@ -258,7 +262,7 @@ public class AntAgent : MonoBehaviour
         Quaternion.Euler(0,0,ang) * v;
 
     #endregion
-    
+
     #region —  Food
 
     void HandleFoodSeeking ()
@@ -294,7 +298,6 @@ public class AntAgent : MonoBehaviour
         }
     }
 
-
     void PickupFood (Transform food)
     {
         if (food.TryGetComponent(out FoodItem item))
@@ -320,20 +323,27 @@ public class AntAgent : MonoBehaviour
         StartTurnAround();
     }
 
-
-    void HandleReturnHome ()
+    void HandleReturnHome()
     {
-        Collider2D nest = Physics2D.OverlapCircle(sensorOrigin.position,
-            parameters.detectionRadius, nestLayer);
-        if (!nest) { targetSteer = Vector2.zero; return; }
+        if (!nestRef) { targetSteer = Vector2.zero; return; }
 
-        Vector2 toNest = ((Vector2)nest.transform.position - (Vector2)transform.position).normalized;
-        targetSteer = toNest * parameters.targetSteerStrength;
+        Vector2 toNestVec = ((Vector2)nestRef.transform.position - (Vector2)transform.position);
+        if (toNestVec.sqrMagnitude > 1e-6f)
+            targetSteer = toNestVec.normalized * parameters.targetSteerStrength;
+        else
+            targetSteer = Vector2.zero;
 
-        if (nest.OverlapPoint(sensorOrigin.position))
+        Collider2D nestCol = nestRef.GetComponentInChildren<Collider2D>();
+        bool atNest = false;
+
+        if (nestCol)
+            atNest = nestCol.OverlapPoint(sensorOrigin.position);
+        else
+            atNest = toNestVec.magnitude <= parameters.pickupDistance * 1.25f;
+
+        if (atNest)
             DepositFood();
     }
-
 
     void DepositFood ()
     {
@@ -347,7 +357,7 @@ public class AntAgent : MonoBehaviour
     }
 
     #endregion
-    
+
     #region — Antennas + obstacles
 
     void HandleCollisionSteering ()
@@ -389,7 +399,7 @@ public class AntAgent : MonoBehaviour
     }
 
     #endregion
-    
+
     #region — Play Area
 
     void EnforcePlayArea ()
@@ -407,4 +417,10 @@ public class AntAgent : MonoBehaviour
     }
 
     #endregion
+
+    void OnDestroy()
+    {
+        if (myTeamId >= 0)
+            TeamManager.Instance?.UnregisterAnt(myTeamId);
+    }
 }

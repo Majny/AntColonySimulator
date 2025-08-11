@@ -7,7 +7,7 @@ public class PheromoneField : MonoBehaviour
 
     public AgentParameters agentParams;
 
-    [Header("Visuals)")]
+    [Header("Visuals")]
     public ParticleSystem particleDisplay;
     public Color pheremoneColor = Color.white;
     public float pheremoneSize = 0.05f;
@@ -27,6 +27,9 @@ public class PheromoneField : MonoBehaviour
 
     void Init()
     {
+        if (particleDisplay == null)
+            particleDisplay = GetComponentInChildren<ParticleSystem>(true) ?? GetComponent<ParticleSystem>();
+
         float perceptionRadius = Mathf.Max(0.01f,
             (agentParams != null && agentParams.pheromoneSensorSize > 0f) ? agentParams.pheromoneSensorSize : 0.75f);
 
@@ -45,7 +48,19 @@ public class PheromoneField : MonoBehaviour
                 cells[x, y] = new Cell();
             }
         }
+
         SetupParticleSystemVisuals();
+
+        if (particleDisplay != null)
+        {
+            if (!particleDisplay.isPlaying) particleDisplay.Play();
+            var rend = particleDisplay.GetComponent<Renderer>();
+            if (rend) rend.sortingOrder = 9999;
+        }
+        else
+        {
+            Debug.LogWarning($"[PheromoneField] No ParticleSystem found on {name}. Trails will be invisible.");
+        }
     }
 
     void SetupParticleSystemVisuals()
@@ -80,7 +95,6 @@ public class PheromoneField : MonoBehaviour
         c.color = grad;
     }
 
-
     public void Add(Vector2 point, float initialWeight)
     {
         Vector2Int cellCoord = CellCoordFromPos(point);
@@ -88,8 +102,8 @@ public class PheromoneField : MonoBehaviour
 
         Entry entry = new Entry
         {
-            position = point, 
-            creationTime = Time.time, 
+            position = point,
+            creationTime = Time.time,
             initialWeight = initialWeight
         };
         cell.Add(entry);
@@ -101,8 +115,7 @@ public class PheromoneField : MonoBehaviour
             particleDisplay.Emit(emitParams, 1);
         }
     }
-    
-    
+
     public float SampleStrength(Vector2 worldPos, float radius, bool toHome)
     {
         float total = 0f;
@@ -154,14 +167,14 @@ public class PheromoneField : MonoBehaviour
 
     public class Cell
     {
-        public LinkedList<Entry> entries = new(); 
+        public LinkedList<Entry> entries = new();
         public void Add(Entry e) => entries.AddLast(e);
     }
 
     public struct Entry
     {
-        public Vector2 position; 
-        public float initialWeight; 
+        public Vector2 position;
+        public float initialWeight;
         public float creationTime;
     }
 
@@ -177,11 +190,21 @@ public class PheromoneField : MonoBehaviour
         var r = GetWorldRect();
         return new Vector2(Mathf.Clamp(p.x, r.xMin, r.xMax), Mathf.Clamp(p.y, r.yMin, r.yMax));
     }
-    
-    
-    
-    
-    
+
+    public void SetVisible(bool visible)
+    {
+        if (particleDisplay)
+        {
+            var rends = particleDisplay.GetComponentsInChildren<Renderer>(true);
+            if (rends != null && rends.Length > 0)
+            {
+                foreach (var r in rends) r.enabled = visible;
+                return;
+            }
+        }
+        gameObject.SetActive(visible);
+    }
+
 #if UNITY_EDITOR
     private void OnDrawGizmosSelected()
     {
