@@ -17,10 +17,27 @@ public class LevelEditorUI : MonoBehaviour
 
     public Slider dirtRadiusSlider;
 
+    [Header("Teams UI")]
+    public TMP_Dropdown teamDropdown;
+
     bool isUpdatingUI;
 
     void Start()
     {
+        if (teamDropdown && editor != null)
+        {
+            teamDropdown.ClearOptions();
+            var opts = new System.Collections.Generic.List<TMP_Dropdown.OptionData>();
+            for (int i = 0; i < TeamManager.MaxTeams; i++)
+            {
+                string label = $"{TeamManager.TeamNames[i]} ({i})";
+                opts.Add(new TMP_Dropdown.OptionData(label));
+            }
+            teamDropdown.AddOptions(opts);
+            teamDropdown.onValueChanged.AddListener(OnTeamDropdownChanged);
+            teamDropdown.value = Mathf.Clamp(editor.currentTeamIndex, 0, TeamManager.MaxTeams - 1);
+        }
+
         if (foodAmountSlider)
         {
             foodAmountSlider.wholeNumbers = true;
@@ -71,6 +88,11 @@ public class LevelEditorUI : MonoBehaviour
     public void OnDirtBtn() => editor.SelectDirt();
     public void OnStartBtn() => editor.StartSimulation();
 
+    void OnTeamDropdownChanged(int idx)
+    {
+        editor.SelectTeam(idx);
+    }
+
     void OnFoodSliderChanged(int val)
     {
         if (isUpdatingUI) return;
@@ -95,7 +117,7 @@ public class LevelEditorUI : MonoBehaviour
         isUpdatingUI = true;
         editor.SetFoodAmount(val);
         if (foodAmountSlider) foodAmountSlider.value = val;
-        if (foodAmountInput)  foodAmountInput.text  = val.ToString();
+        if (foodAmountInput) foodAmountInput.text = val.ToString();
         isUpdatingUI = false;
     }
 

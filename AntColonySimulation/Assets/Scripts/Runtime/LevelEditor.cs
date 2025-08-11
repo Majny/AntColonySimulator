@@ -13,15 +13,14 @@ public class LevelEditor : MonoBehaviour
     public GameObject nestPrefab;
     public GameObject dirtSegmentPrefab;
 
-    [Header("Scene refs (pheromones)")]
-    public PheromoneField homeField;
-    public PheromoneField foodField;
+    [Header("Teams (fixed 0..4)")]
+    [Range(0, TeamManager.MaxTeams - 1)]
+    public int currentTeamIndex = 0;
 
     [Header("Food settings")]
     public int foodAmount = 20;
 
     [Header("Nest settings")]
-    [Tooltip("Kolik mravenců se má spawnout v každém NOVĚ položeném hnízdě.")]
     public int nestInitialAgents = 10;
 
     [Header("Dirt drawing")]
@@ -29,15 +28,11 @@ public class LevelEditor : MonoBehaviour
     public float minDirtRadius = .2f, maxDirtRadius = 2f;
 
     [Header("Dirt collision")]
-    [Tooltip("Vrstva, na které budou dirt segmenty. Musí být zahrnutá v AntAgent.obstacleMask.")]
     public string dirtObstacleLayerName = "Obstacle";
-    [Tooltip("Pokud true, dirt je pouze trigger (mravenci projdou). Pro pevnou zeď nech false.")]
     public bool dirtIsTrigger = false;
 
     [Header("Dirt brush tuning")]
-    [Tooltip("Krok mezi body při tažení (násobek poloměru). Menší = hustší tah.")]
     public float strokeStepFactor = 0.5f;
-    [Tooltip("Kolik % navíc zvětšit collider vůči vizuálnímu poloměru.")]
     public float colliderOverlap = 1.05f;
 
     [Header("Runtime-UI preview")]
@@ -112,6 +107,11 @@ public class LevelEditor : MonoBehaviour
         }
     }
 
+    public void SelectTeam(int idx)
+    {
+        currentTeamIndex = Mathf.Clamp(idx, 0, TeamManager.MaxTeams - 1);
+    }
+
     public float GetDirtRadius() => dirtRadius;
     public float GetDirtRadiusMin() => minDirtRadius;
     public float GetDirtRadiusMax() => maxDirtRadius;
@@ -143,11 +143,7 @@ public class LevelEditor : MonoBehaviour
         if (preview) preview.enabled = false;
 
         foreach (var nest in FindObjectsByType<NestController>(FindObjectsSortMode.None))
-        {
-            if (homeField) nest.homeMarkersField = homeField;
-            if (foodField) nest.foodMarkersField = foodField;
             nest.enabled = true;
-        }
     }
 
     void SetTool(Tool t)
@@ -185,18 +181,19 @@ public class LevelEditor : MonoBehaviour
 
         if (go.TryGetComponent<NestController>(out var nc))
         {
-            if (homeField) nc.homeMarkersField = homeField;
-            if (foodField) nc.foodMarkersField = foodField;
+            int tid = Mathf.Clamp(currentTeamIndex, 0, TeamManager.MaxTeams - 1);
+            nc.teamId = tid;
+            nc.teamColor = TeamManager.TeamColors[tid];
 
             nc.initialAgents = nestInitialAgents;
+
+            if (TeamManager.Instance) TeamManager.Instance.RegisterNest(tid, nc);
 
             nc.enabled = false;
         }
 
         if (go.TryGetComponent<FoodSpawner>(out var fs))
-        {
             fs.amount = foodAmount;
-        }
     }
 
     void BeginDirtStroke(Vector2 start)
