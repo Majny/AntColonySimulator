@@ -26,6 +26,7 @@ public class NestController : MonoBehaviour
     public TextMeshPro foodCounter;
 
     int foodCollected;
+    int foodSinceLastSpawn;
 
     PheromoneField teamHomeField;
     PheromoneField teamFoodField;
@@ -104,11 +105,23 @@ public class NestController : MonoBehaviour
 
     public void SpawnAgent()
     {
+        if (!agentPrefab) return;
+
         Vector2 spawnPos = (Vector2)transform.position + Random.insideUnitCircle * spawnRadius;
-
         var agent = Instantiate(agentPrefab, (Vector3)spawnPos, Quaternion.identity, agentsParent);
+        
+        AgentParameters chosenParams = agentParams;
+        var rules = GameRules.Instance;
+        if (rules && rules.upgradedAnts && agentParams != null)
+        {
+            var copy = ScriptableObject.Instantiate(agentParams);
+            var genome = rules.GenerateGenome();
+            genome?.ApplyTo(copy);
+            chosenParams = copy;
+        }
 
-        if (agent.parameters == null && agentParams != null) agent.parameters = agentParams;
+        agent.parameters = chosenParams;
+
         if (agent.sensorOrigin == null) agent.sensorOrigin = agent.transform;
 
         agent.Init(this, teamHomeField, teamFoodField);
@@ -124,6 +137,18 @@ public class NestController : MonoBehaviour
         foodCollected++;
         UpdateCounter();
         TeamManager.Instance?.AddFood(teamId, 1);
+
+        var rules = GameRules.Instance;
+        if (rules && rules.simulationOfLife)
+        {
+            foodSinceLastSpawn++;
+            int need = Mathf.Max(1, rules.foodPerNewAnt);
+            while (foodSinceLastSpawn >= need)
+            {
+                foodSinceLastSpawn -= need;
+                SpawnAgent();
+            }
+        }
     }
 
 #if UNITY_EDITOR
