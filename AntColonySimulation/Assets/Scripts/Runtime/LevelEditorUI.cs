@@ -20,6 +20,11 @@ public class LevelEditorUI : MonoBehaviour
     [Header("Teams UI")]
     public TMP_Dropdown teamDropdown;
 
+    [Header("Game Rules")]
+    public Toggle simulationOfLifeToggle;
+    public Toggle upgradedAntsToggle;
+    public TMP_InputField foodPerNewAntInput;
+
     bool isUpdatingUI;
 
     void Start()
@@ -29,10 +34,7 @@ public class LevelEditorUI : MonoBehaviour
             teamDropdown.ClearOptions();
             var opts = new System.Collections.Generic.List<TMP_Dropdown.OptionData>();
             for (int i = 0; i < TeamManager.MaxTeams; i++)
-            {
-                string label = $"{TeamManager.TeamNames[i]} ({i})";
-                opts.Add(new TMP_Dropdown.OptionData(label));
-            }
+                opts.Add(new TMP_Dropdown.OptionData($"{TeamManager.TeamNames[i]} ({i})"));
             teamDropdown.AddOptions(opts);
             teamDropdown.onValueChanged.AddListener(OnTeamDropdownChanged);
             teamDropdown.value = Mathf.Clamp(editor.currentTeamIndex, 0, TeamManager.MaxTeams - 1);
@@ -69,12 +71,23 @@ public class LevelEditorUI : MonoBehaviour
             dirtRadiusSlider.onValueChanged.AddListener(OnDirtRadiusSliderChanged);
         }
 
-        editor.OnDirtRadiusChanged += SyncDirtSliderFromEditor;
+        InitGameRulesUI();
+
+        if (editor != null)
+            editor.OnDirtRadiusChanged += SyncDirtSliderFromEditor;
     }
 
     void OnDestroy()
     {
         if (editor != null) editor.OnDirtRadiusChanged -= SyncDirtSliderFromEditor;
+
+        if (simulationOfLifeToggle) simulationOfLifeToggle.onValueChanged.RemoveListener(OnSimulationOfLifeChanged);
+        if (upgradedAntsToggle) upgradedAntsToggle.onValueChanged.RemoveListener(OnUpgradedAntsChanged);
+        if (foodPerNewAntInput)
+        {
+            foodPerNewAntInput.onEndEdit.RemoveListener(OnFoodPerNewAntEndEdit);
+            foodPerNewAntInput.onSubmit.RemoveListener(OnFoodPerNewAntEndEdit);
+        }
     }
 
     void Update()
@@ -86,12 +99,10 @@ public class LevelEditorUI : MonoBehaviour
     public void OnFoodBtn() => editor.SelectFood();
     public void OnNestBtn() => editor.SelectNest();
     public void OnDirtBtn() => editor.SelectDirt();
+    public void OnRubberBtn() => editor.SelectRubber();
     public void OnStartBtn() => editor.StartSimulation();
 
-    void OnTeamDropdownChanged(int idx)
-    {
-        editor.SelectTeam(idx);
-    }
+    void OnTeamDropdownChanged(int idx) => editor.SelectTeam(idx);
 
     void OnFoodSliderChanged(int val)
     {
@@ -152,5 +163,63 @@ public class LevelEditorUI : MonoBehaviour
         isUpdatingUI = true;
         if (dirtRadiusSlider) dirtRadiusSlider.value = current;
         isUpdatingUI = false;
+    }
+
+    void InitGameRulesUI()
+    {
+        var gr = GameRules.Instance;
+        bool hasGR = (gr != null);
+
+        if (simulationOfLifeToggle)
+        {
+            simulationOfLifeToggle.interactable = hasGR;
+            if (hasGR) simulationOfLifeToggle.isOn = gr.simulationOfLife;
+            simulationOfLifeToggle.onValueChanged.AddListener(OnSimulationOfLifeChanged);
+        }
+
+        if (upgradedAntsToggle)
+        {
+            upgradedAntsToggle.interactable = hasGR;
+            if (hasGR) upgradedAntsToggle.isOn = gr.upgradedAnts;
+            upgradedAntsToggle.onValueChanged.AddListener(OnUpgradedAntsChanged);
+        }
+
+        if (foodPerNewAntInput)
+        {
+            foodPerNewAntInput.contentType = TMP_InputField.ContentType.IntegerNumber;
+            foodPerNewAntInput.interactable = hasGR;
+            if (hasGR) foodPerNewAntInput.text = Mathf.Max(1, gr.foodPerNewAnt).ToString();
+            foodPerNewAntInput.onEndEdit.AddListener(OnFoodPerNewAntEndEdit);
+            foodPerNewAntInput.onSubmit.AddListener(OnFoodPerNewAntEndEdit);
+        }
+    }
+
+    void OnSimulationOfLifeChanged(bool v)
+    {
+        var gr = GameRules.Instance;
+        if (gr != null) gr.simulationOfLife = v;
+    }
+
+    void OnUpgradedAntsChanged(bool v)
+    {
+        var gr = GameRules.Instance;
+        if (gr != null) gr.upgradedAnts = v;
+    }
+
+    void OnFoodPerNewAntEndEdit(string text)
+    {
+        var gr = GameRules.Instance;
+        if (gr == null) return;
+
+        if (!int.TryParse(text, out var val) || val < 1)
+            val = 1;
+
+        gr.foodPerNewAnt = val;
+        if (foodPerNewAntInput) foodPerNewAntInput.text = val.ToString();
+    }
+    
+    public void OnResetBtn()
+    {
+        if (editor) editor.ResetLevel();
     }
 }

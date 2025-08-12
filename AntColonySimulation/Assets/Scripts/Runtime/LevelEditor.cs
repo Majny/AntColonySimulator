@@ -3,10 +3,18 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 public class LevelEditor : MonoBehaviour
 {
-    public enum Tool { None, Food, Nest, Dirt }
+    public enum Tool
+    {
+        None, 
+        Food, 
+        Nest, 
+        Dirt, 
+        Rubber
+    }
 
     [Header("Prefabs")]
     public GameObject foodSpawnerPrefab;
@@ -51,6 +59,8 @@ public class LevelEditor : MonoBehaviour
     bool drawing;
     Vector2 lastDirtPoint;
 
+    static readonly Collider2D[] eraseBuffer = new Collider2D[64];
+
     void Awake()
     {
         cam = Camera.main ? Camera.main : FindFirstObjectByType<Camera>();
@@ -73,7 +83,7 @@ public class LevelEditor : MonoBehaviour
         Vector2 screen = Mouse.current.position.ReadValue();
         Vector2 worldPos = cam.ScreenToWorldPoint(screen);
 
-        if (currentTool == Tool.Dirt)
+        if (currentTool == Tool.Dirt || currentTool == Tool.Rubber)
         {
             float scroll = Mouse.current.scroll.ReadValue().y;
             if (Mathf.Abs(scroll) > 0.01f)
@@ -88,17 +98,19 @@ public class LevelEditor : MonoBehaviour
             switch (currentTool)
             {
                 case Tool.Food: Place(foodSpawnerPrefab, worldPos); break;
-                case Tool.Nest: Place(nestPrefab,        worldPos); break;
-                case Tool.Dirt: BeginDirtStroke(worldPos);          break;
+                case Tool.Nest: Place(nestPrefab, worldPos); break;
+                case Tool.Dirt: BeginDirtStroke(worldPos); break;
+                case Tool.Rubber: BeginEraseStroke(worldPos); break;
             }
         }
 
-        if (currentTool == Tool.Dirt && drawing)
+        if (drawing)
         {
             float step = dirtRadius * Mathf.Max(0.05f, strokeStepFactor);
             if (Vector2.Distance(worldPos, lastDirtPoint) >= step)
             {
-                SpawnDirtSegment(worldPos);
+                if (currentTool == Tool.Dirt) SpawnDirtSegment(worldPos);
+                if (currentTool == Tool.Rubber) EraseDirtAt(worldPos);
                 lastDirtPoint = worldPos;
             }
 
@@ -126,15 +138,12 @@ public class LevelEditor : MonoBehaviour
     }
 
     public void SetFoodAmount(int amount) => foodAmount = amount;
-
-    public void SetNestInitialAgents(int count)
-    {
-        nestInitialAgents = Mathf.Max(0, count);
-    }
+    public void SetNestInitialAgents(int count) => nestInitialAgents = Mathf.Max(0, count);
 
     public void SelectFood() => SetTool(Tool.Food);
     public void SelectNest() => SetTool(Tool.Nest);
     public void SelectDirt() => SetTool(Tool.Dirt);
+    public void SelectRubber() => SetTool(Tool.Rubber);
 
     public void StartSimulation()
     {
@@ -150,7 +159,7 @@ public class LevelEditor : MonoBehaviour
     {
         currentTool = t;
         EnsurePreview();
-        if (preview) preview.enabled = (t == Tool.Dirt) && preview.sprite != null;
+        if (preview) preview.enabled = ((t == Tool.Dirt) || (t == Tool.Rubber)) && preview.sprite != null;
         UpdatePreviewScale();
     }
 
@@ -184,11 +193,9 @@ public class LevelEditor : MonoBehaviour
             int tid = Mathf.Clamp(currentTeamIndex, 0, TeamManager.MaxTeams - 1);
             nc.teamId = tid;
             nc.teamColor = TeamManager.TeamColors[tid];
-
             nc.initialAgents = nestInitialAgents;
 
             if (TeamManager.Instance) TeamManager.Instance.RegisterNest(tid, nc);
-
             nc.enabled = false;
         }
 
@@ -203,6 +210,13 @@ public class LevelEditor : MonoBehaviour
         SpawnDirtSegment(start);
     }
 
+    void BeginEraseStroke(Vector2 start)
+    {
+        drawing = true;
+        lastDirtPoint = start;
+        EraseDirtAt(start);
+    }
+
     void SpawnDirtSegment(Vector2 pos)
     {
         if (!dirtSegmentPrefab) return;
@@ -215,10 +229,34 @@ public class LevelEditor : MonoBehaviour
         var col = seg.GetComponent<CircleCollider2D>();
         if (!col) col = seg.AddComponent<CircleCollider2D>();
         col.isTrigger = dirtIsTrigger;
-        col.radius = dirtRadius * Mathf.Max(1f, colliderOverlap);
 
-        seg.transform.localScale = Vector3.one * dirtRadius * 2f;
+        seg.transform.localScale = Vector3.one;
+        float scale = dirtRadius * 2f;
+        seg.transform.localScale = new Vector3(scale, scale, 1f);
+
+        float overlap = Mathf.Max(1f, colliderOverlap);
+        col.radius = 0.5f * overlap;
+
+        if (!seg.GetComponent<Dirt>()) seg.AddComponent<Dirt>();
+
         spawnedInEdit.Add(seg);
+    }
+
+    void EraseDirtAt(Vector2 pos)
+    {
+        int n = Physics2D.OverlapCircleNonAlloc(pos, dirtRadius, eraseBuffer, ~0);
+        for (int i = 0; i < n; i++)
+        {
+            var c = eraseBuffer[i];
+            if (!c) continue;
+
+            var marker = c.GetComponentInParent<Dirt>();
+            if (!marker) continue;
+
+            var go = marker.gameObject;
+            spawnedInEdit.Remove(go);
+            Destroy(go);
+        }
     }
 
     static bool IsPointerOverUI()
@@ -226,4 +264,17 @@ public class LevelEditor : MonoBehaviour
         if (EventSystem.current == null) return false;
         return EventSystem.current.IsPointerOverGameObject();
     }
+    
+    public void ResetLevel()
+    {
+        var scene = SceneManager.GetActiveScene();
+        SceneManager.LoadScene(scene.buildIndex);
+    }
+    
+    
 }
+
+
+[DisallowMultipleComponent]
+public class Dirt : MonoBehaviour {}
+
