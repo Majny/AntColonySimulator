@@ -21,8 +21,8 @@ public class AgentParameters : ScriptableObject
     public float randomSteerMaxDuration = 1.5f;
 
     public float pheromoneSpacing = 0.75f;
-    public float pheromoneRunOutTime = 30f;
-    public float pheromoneEvaporateTime = 45f;
+    public float pheromoneRunOutTime = 70f;
+    public float pheromoneEvaporateTime = 100f;
 
     public float collisionRadius = 0.15f;
     public float collisionAvoidSteerStrength = 5f;
