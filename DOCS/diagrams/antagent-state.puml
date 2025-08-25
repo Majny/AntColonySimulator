@@ -1,0 +1,15 @@
+@startuml
+title AntAgent states
+[*] --> ToFood
+
+state ToFood {
+  ToFood --> ToHome : PickupFoodTarget()
+}
+
+state ToHome {
+  ToHome --> ToFood : DepositFood()
+}
+
+ToFood --> [*]
+ToHome --> [*]
+@enduml
