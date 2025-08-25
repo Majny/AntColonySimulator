@@ -2,30 +2,61 @@ using UnityEngine;
 
 public class FoodSpawner : MonoBehaviour
 {
-    public float radius = 3f;
-    public int amount = 20;
-    public bool maintainAmount = true;
-    public float timeBetweenSpawns = 2f;
-    public GameObject foodPrefab;
+    // ─────────────────────────────────────────────────────────────────────────────
+    // KONFIGURACE Z INSPECTORU
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Konfigurace
+
+    public float radius = 3f;                 // Poloměr oblasti spawnu
+    public int amount = 20;                   // Cílový počet kusů jídla
+    public bool maintainAmount = true;        // Udržovat průběžně cílový počet
+    public float timeBetweenSpawns = 2f;      // Interval mezi auto-spawny
+    public GameObject foodPrefab;             // Prefab položky jídla
 
     [Header("Clustering")]
-    public int blobCount = 1;
-    public int seed = 0;
+    public int blobCount = 1;                 // Počet shluků v rámci oblasti
+    public int seed = 0;                      // Seed pro deterministické rozmístění
+    
+        [Header("Spawn rules")]
+    public float spawnClearanceRadius = 0.25f; // Odstup od hlíny
+    public LayerMask obstacleMask;             // Nastav na vrstvu "Obstacle"
+    public PheromoneField playArea;            // Stejná area jako v LevelEditoru
+    public int maxSpawnTries = 6;              // Kolikrát zkusit najít validní místo
 
-    System.Random prng;
-    Vector3[] blobs;
-    float nextSpawnTime;
 
+    #endregion
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // VNITŘNÍ STAV
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Vnitřní stav
+
+    System.Random prng;       // Nezávislý PRNG pro výběr blobu
+    Vector3[] blobs;          // Pole shluků: (x, y, r)
+    float nextSpawnTime;      // Čas dalšího automatického spawnu
+
+    #endregion
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // UNITY LIFECYCLE
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Unity lifecycle
+
+    // Připraví shluky (centra a jejich poloměry) podle seedu a radiusu.
     void Awake()
     {
         BuildBlobs();
     }
 
+    // Naplní spawner počátečním množstvím a nastaví čas spawnu.
     void Start()
     {
         Rebuild();
     }
 
+    // Průběžně doplňuje chybějící kusy jídla podle intervalu.
     void Update()
     {
         if (!maintainAmount || foodPrefab == null) return;
@@ -37,6 +68,15 @@ public class FoodSpawner : MonoBehaviour
         }
     }
 
+    #endregion
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // VEŘEJNÉ AKCE
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Veřejné akce
+
+    // Editorová akce: smaže všechny potomky a znovu je naspawnuje dle 'amount'.
     [ContextMenu("Rebuild")]
     public void Rebuild()
     {
@@ -49,6 +89,15 @@ public class FoodSpawner : MonoBehaviour
         nextSpawnTime = Time.time + timeBetweenSpawns;
     }
 
+    #endregion
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // POMOCNÉ FUNKCE
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Helpers
+
+    // Vytvoří seznam shluků.
     void BuildBlobs()
     {
         Random.InitState(seed);
@@ -66,6 +115,7 @@ public class FoodSpawner : MonoBehaviour
         }
     }
 
+    // Vytvoří jeden kus jídla v rámci náhodně zvoleného shluku.
     void SpawnFood()
     {
         if (foodPrefab == null) return;
@@ -79,11 +129,14 @@ public class FoodSpawner : MonoBehaviour
         if (foodLayer >= 0) go.layer = foodLayer;
     }
 
-#if UNITY_EDITOR
+    #if UNITY_EDITOR
+    // V editoru vykreslí pomocnou kružnici oblasti spawnu.
     void OnDrawGizmosSelected()
     {
         Gizmos.color = new Color(1f, 1f, 1f, 0.35f);
         Gizmos.DrawWireSphere(transform.position, radius);
     }
-#endif
+    #endif
+
+    #endregion
 }
