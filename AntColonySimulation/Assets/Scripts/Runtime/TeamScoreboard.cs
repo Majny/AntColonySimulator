@@ -5,35 +5,57 @@ using UnityEngine.UI;
 
 public class TeamScoreboard : MonoBehaviour
 {
+    // ─────────────────────────────────────────────────────────────────────────────
+    // KONFIGURACE Z INSPECTORU
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Konfigurace z Inspectoru
+
     [Header("UI Refs")]
-    public RectTransform contentRoot;
-    public TeamScoreboardRow rowPrefab;
+    public RectTransform contentRoot;      // Kořen obsahu tabulky (řádky + header)
+    public TeamScoreboardRow rowPrefab;    // Prefab jednoho řádku
 
     [Header("Options")]
-    public bool showOnlyTeamsWithNests = false;
-    public bool autoRefresh = true;
-    public float refreshInterval = 0.5f;
+    public bool showOnlyTeamsWithNests = false; // Zobrazit jen týmy, které mají alespoň jedno hnízdo
+    public bool autoRefresh = true;             // Pravidelně obnovovat obsah
+    public float refreshInterval = 0.5f;        // Interval auto-refresh (s)
 
     [Header("Auto size (panel height)")]
-    public bool autoSize = true;
-    [Range(0.2f, 1f)] public float maxHeightRatio = 0.65f;
-    public float extraVerticalPadding = 8f;
+    public bool autoSize = true;                // Automaticky upravovat výšku panelu
+    [Range(0.2f, 1f)] public float maxHeightRatio = 0.65f; // Max. poměr výšky vůči rodiči
+    public float extraVerticalPadding = 8f;     // Dodatečný vnitřní padding (px)
 
     [Header("Anchoring / Layout")]
-    public bool lockTopRight = true;
-    public Vector2 edgeOffset = new(-20f, -20f);
+    public bool lockTopRight = true;            // Ukotvit panel do pravého horního rohu
+    public Vector2 edgeOffset = new(-20f, -20f);// Posun od okraje (px)
 
     [Header("Header")]
-    public int headerFont = 16;
-    public float headerStatMinWidth = 44f;
-    public float headerSpacing = 6f;
+    public int headerFont = 16;                 // Velikost písma hlavičky
+    public float headerStatMinWidth = 44f;      // Min. šířka číselných sloupců v hlavičce
+    public float headerSpacing = 6f;            // Svislé mezery mezi řádky (ovlivní i layout)
 
-    readonly Dictionary<int, TeamScoreboardRow> rows = new();
-    float refreshTimer;
+    #endregion
 
-    RectTransform panel;
-    RectTransform headerRoot;
 
+    // ─────────────────────────────────────────────────────────────────────────────
+    // VNITŘNÍ STAV
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Vnitřní stav
+
+    readonly Dictionary<int, TeamScoreboardRow> rows = new(); // Mapa teamId → instancovaný řádek
+    float refreshTimer;                                       // Akumulátor pro auto-refresh
+
+    RectTransform panel;    // Vlastní RT panelu
+    RectTransform headerRoot; // RT uzlu hlavičky
+
+    #endregion
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // UNITY LIFECYCLE
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Unity lifecycle
+
+    // Připraví ukotvení panelu, zajistí kořen obsahu a vytvoří hlavičku.
     void Awake()
     {
         panel = GetComponent<RectTransform>();
@@ -41,7 +63,7 @@ public class TeamScoreboard : MonoBehaviour
         if (lockTopRight && panel)
         {
             panel.anchorMin = panel.anchorMax = new Vector2(1, 1);
-            panel.pivot     = new Vector2(1, 1);
+            panel.pivot = new Vector2(1, 1);
             panel.anchoredPosition = edgeOffset;
         }
 
@@ -49,8 +71,10 @@ public class TeamScoreboard : MonoBehaviour
         EnsureHeader();
     }
 
+    // Při zapnutí komponenty provede okamžitý rebuild tabulky.
     void OnEnable() => TryRebuild();
 
+    // Řídí periodické obnovování tabulky podle intervalu.
     void Update()
     {
         if (!autoRefresh) return;
@@ -62,18 +86,28 @@ public class TeamScoreboard : MonoBehaviour
         }
     }
 
+    // Udržuje správné ukotvení/pozici panelu a obsahu při změnách v editoru.
     void OnValidate()
     {
         if (!panel) panel = GetComponent<RectTransform>();
         if (panel && lockTopRight)
         {
             panel.anchorMin = panel.anchorMax = new Vector2(1, 1);
-            panel.pivot     = new Vector2(1, 1);
+            panel.pivot = new Vector2(1, 1);
             panel.anchoredPosition = edgeOffset;
         }
         if (contentRoot) AnchorContent(contentRoot);
     }
 
+    #endregion
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // VEŘEJNÉ API
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Veřejné API
+
+    // Znovu sestaví seznam týmů, vytvoří/aktualizuje řádky a přepočítá výšku panelu.
     public void TryRebuild()
     {
         if (TeamManager.Instance == null || !contentRoot) return;
@@ -124,6 +158,19 @@ public class TeamScoreboard : MonoBehaviour
         if (autoSize) RecalculateHeight();
     }
 
+    // Kontextové menu v Inspectoru: okamžitě vynutí rebuild tabulky.
+    [ContextMenu("Force Rebuild Now")]
+    public void ForceRebuildNow() => TryRebuild();
+
+    #endregion
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // POMOCNÉ FUNKCE (LAYOUT / UI)
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Helpers
+
+    // Spočítá preferovanou výšku obsahu a upraví výšku panelu s ohledem na limity.
     void RecalculateHeight()
     {
         if (!panel || !contentRoot) return;
@@ -142,6 +189,7 @@ public class TeamScoreboard : MonoBehaviour
         panel.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, target);
     }
 
+    // Zajistí existenci kořene obsahu a nastaví mu layout/fit parametry.
     void EnsureContentRoot()
     {
         if (!contentRoot)
@@ -168,6 +216,7 @@ public class TeamScoreboard : MonoBehaviour
         csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
     }
 
+    // Vytvoří a nakonfiguruje hlavičku tabulky (Team / Ants / Food).
     void EnsureHeader()
     {
         if (!contentRoot) return;
@@ -228,6 +277,7 @@ public class TeamScoreboard : MonoBehaviour
         leRow.preferredHeight = 22f;
     }
 
+    // Nastaví ukotvení a rozměry tak, aby se obsah lepil na horní okraj a roztahoval na šířku.
     static void AnchorContent(RectTransform rt)
     {
         rt.anchorMin = new Vector2(0f, 1f);
@@ -238,6 +288,5 @@ public class TeamScoreboard : MonoBehaviour
         rt.localScale = Vector3.one;
     }
 
-    [ContextMenu("Force Rebuild Now")]
-    public void ForceRebuildNow() => TryRebuild();
+    #endregion
 }

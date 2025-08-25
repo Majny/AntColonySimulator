@@ -5,28 +5,50 @@ using UnityEngine.UI;
 [RequireComponent(typeof(RectTransform))]
 public class UIDragPanel : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, IDragHandler
 {
+    // ─────────────────────────────────────────────────────────────────────────────
+    // KONFIGURACE Z INSPECTORU
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Konfigurace
+
     [Header("What to move")]
-    public RectTransform targetPanel;
+    public RectTransform targetPanel; // Panel, který se má přetahovat
 
     [Header("Handle")]
-    public RectTransform handle;
+    public RectTransform handle;      // Oblast, za kterou se chytá myší
 
     [Header("Options")]
-    public bool clampToCanvas = true;
-    public float padding = 6f;
-    public bool bringToFrontOnDrag = true;
-    public bool addTransparentRaycastImageIfMissing = true;
+    public bool clampToCanvas = true; // Udržovat panel uvnitř plochy canvasu
+    public float padding = 6f;        // Vnitřní okraje při clampování
+    public bool bringToFrontOnDrag = true;               // Při drag posunout na vrch
+    public bool addTransparentRaycastImageIfMissing = true; // Přidat neviditelný Graphic pro raycast
 
     [Header("Persistence")]
-    public bool savePosition = false;
-    public string prefsKey;
+    public bool savePosition = false; // Ukládat pozici do PlayerPrefs
+    public string prefsKey;           // Volitelný klíč pro PlayerPrefs
 
-    RectTransform canvasRect;
-    Canvas canvas;
+    #endregion
 
-    Vector3 startPanelWorldPos;
-    Vector3 startPointerWorldPos;
 
+    // ─────────────────────────────────────────────────────────────────────────────
+    // VNITŘNÍ STAV
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Vnitřní stav
+
+    RectTransform canvasRect; // RT canvasu pro převody souřadnic
+    Canvas canvas;            // Nadřazený canvas
+
+    Vector3 startPanelWorldPos;   // Počáteční světová pozice panelu při drag
+    Vector3 startPointerWorldPos; // Počáteční světová pozice kurzoru při drag
+
+    #endregion
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // UNITY LIFECYCLE
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Unity lifecycle
+
+    // Nastaví reference na canvas, handle a panel, přidá raycast Image a obnoví uloženou pozici.
     void Awake()
     {
         canvas = GetComponentInParent<Canvas>();
@@ -58,36 +80,27 @@ public class UIDragPanel : MonoBehaviour, IPointerDownHandler, IBeginDragHandler
         }
     }
 
-    string GetPrefsKey()
-    {
-        if (!string.IsNullOrEmpty(prefsKey)) return prefsKey;
-        return targetPanel ? targetPanel.gameObject.name : gameObject.name;
-    }
+    #endregion
 
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // EVENT HANDLERY (IPointerDown / IBeginDrag / IDrag)
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Event handlery
+
+    // Uloží výchozí stav při stisku tlačítka nad handlem.
     public void OnPointerDown(PointerEventData e)
     {
         CacheStart(e);
     }
 
+    // Uloží výchozí stav na začátku přetahování.
     public void OnBeginDrag(PointerEventData e)
     {
         CacheStart(e);
     }
 
-    void CacheStart(PointerEventData e)
-    {
-        if (!canvasRect || !targetPanel) return;
-
-        startPanelWorldPos = targetPanel.position;
-
-        if (!RectTransformUtility.ScreenPointToWorldPointInRectangle(
-                canvasRect, e.position, e.pressEventCamera, out startPointerWorldPos))
-            startPointerWorldPos = Vector3.zero;
-
-        if (bringToFrontOnDrag)
-            targetPanel.SetAsLastSibling();
-    }
-
+    // Přepočítá světovou pozici panelu podle pohybu kurzoru a případně omezí na canvas.
     public void OnDrag(PointerEventData e)
     {
         if (!canvasRect || !targetPanel) return;
@@ -127,4 +140,36 @@ public class UIDragPanel : MonoBehaviour, IPointerDownHandler, IBeginDragHandler
             PlayerPrefs.SetFloat(key + "_y", ap.y);
         }
     }
+
+    #endregion
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // POMOCNÉ FUNKCE
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Helpers
+
+    // Sestaví klíč pro PlayerPrefs.
+    string GetPrefsKey()
+    {
+        if (!string.IsNullOrEmpty(prefsKey)) return prefsKey;
+        return targetPanel ? targetPanel.gameObject.name : gameObject.name;
+    }
+
+    // Zapamatuje si výchozí pozici panelu i kurzoru a případně posune panel na vrch hierarchie.
+    void CacheStart(PointerEventData e)
+    {
+        if (!canvasRect || !targetPanel) return;
+
+        startPanelWorldPos = targetPanel.position;
+
+        if (!RectTransformUtility.ScreenPointToWorldPointInRectangle(
+                canvasRect, e.position, e.pressEventCamera, out startPointerWorldPos))
+            startPointerWorldPos = Vector3.zero;
+
+        if (bringToFrontOnDrag)
+            targetPanel.SetAsLastSibling();
+    }
+
+    #endregion
 }

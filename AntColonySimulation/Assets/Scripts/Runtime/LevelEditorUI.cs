@@ -5,6 +5,11 @@ using TMPro;
 
 public class LevelEditorUI : MonoBehaviour
 {
+    // ─────────────────────────────────────────────────────────────────────────────
+    // ODKAZY NA EDITOR A UI
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Odkazy
+
     public LevelEditor editor;
 
     [Header("UI refs")]
@@ -25,8 +30,24 @@ public class LevelEditorUI : MonoBehaviour
     public Toggle upgradedAntsToggle;
     public TMP_InputField foodPerNewAntInput;
 
-    bool isUpdatingUI;
+    #endregion
 
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // VNITŘNÍ STAV
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Vnitřní stav
+
+    bool isUpdatingUI; // zámek proti cyklickému přepisování mezi UI
+    #endregion
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // UNITY LIFECYCLE
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Unity lifecycle
+
+    // Inicializuje dropdowny, slidery a připojí event listenery.
     void Start()
     {
         if (teamDropdown && editor != null)
@@ -77,6 +98,7 @@ public class LevelEditorUI : MonoBehaviour
             editor.OnDirtRadiusChanged += SyncDirtSliderFromEditor;
     }
 
+    // Odpojí listenery a uklidí při zničení komponenty.
     void OnDestroy()
     {
         if (editor != null) editor.OnDirtRadiusChanged -= SyncDirtSliderFromEditor;
@@ -90,20 +112,54 @@ public class LevelEditorUI : MonoBehaviour
         }
     }
 
+    // Umožní klávesou TAB skrýt/zobrazit panel editoru.
     void Update()
     {
         if (Keyboard.current != null && Keyboard.current.tabKey.wasPressedThisFrame && editorMenuPanel)
             editorMenuPanel.SetActive(!editorMenuPanel.activeSelf);
     }
 
+    #endregion
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // HANDLERY TOOLBARU
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Toolbar (Buttons)
+
+    // Přepne nástroj na pokládání jídla.
     public void OnFoodBtn() => editor.SelectFood();
+
+    // Přepne nástroj na pokládání hnízd.
     public void OnNestBtn() => editor.SelectNest();
+
+    // Přepne nástroj na kreslení hlíny.
     public void OnDirtBtn() => editor.SelectDirt();
+
+    // Přepne nástroj na gumu.
     public void OnRubberBtn() => editor.SelectRubber();
+
+    // Spustí simulaci.
     public void OnStartBtn() => editor.StartSimulation();
 
+    // Resetuje aktuální scénu.
+    public void OnResetBtn()
+    {
+        if (editor) editor.ResetLevel();
+    }
+
+    #endregion
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // HANDLERY ZMĚN UI KOMPONENT
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — UI změny
+
+    // Změní aktivní tým po výběru v dropdownu.
     void OnTeamDropdownChanged(int idx) => editor.SelectTeam(idx);
 
+    // Nastaví množství jídla přes slider a synchronizuje input.
     void OnFoodSliderChanged(int val)
     {
         if (isUpdatingUI) return;
@@ -113,6 +169,7 @@ public class LevelEditorUI : MonoBehaviour
         isUpdatingUI = false;
     }
 
+    // Nastaví množství jídla po potvrzení textového inputu a synchronizuje slider.
     void OnFoodInputEndEdit(string text)
     {
         if (isUpdatingUI) return;
@@ -132,6 +189,7 @@ public class LevelEditorUI : MonoBehaviour
         isUpdatingUI = false;
     }
 
+    // Nastaví počet počátečních agentů po potvrzení textového inputu.
     void OnNestAntsEndEdit(string text)
     {
         if (isUpdatingUI) return;
@@ -149,6 +207,7 @@ public class LevelEditorUI : MonoBehaviour
         isUpdatingUI = false;
     }
 
+    // Předá změnu poloměru štětce do editoru.
     void OnDirtRadiusSliderChanged(float v)
     {
         if (isUpdatingUI) return;
@@ -157,6 +216,7 @@ public class LevelEditorUI : MonoBehaviour
         isUpdatingUI = false;
     }
 
+    // Přijme změnu poloměru z editoru.
     void SyncDirtSliderFromEditor(float current)
     {
         if (isUpdatingUI) return;
@@ -165,6 +225,15 @@ public class LevelEditorUI : MonoBehaviour
         isUpdatingUI = false;
     }
 
+    #endregion
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // GAME RULES
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Game Rules UI
+
+    // Načte stav z GameRules do UI a připojí listenery.
     void InitGameRulesUI()
     {
         var gr = GameRules.Instance;
@@ -194,18 +263,21 @@ public class LevelEditorUI : MonoBehaviour
         }
     }
 
+    // Přepíná Simulation of Life v GameRules.
     void OnSimulationOfLifeChanged(bool v)
     {
         var gr = GameRules.Instance;
         if (gr != null) gr.simulationOfLife = v;
     }
 
+    // Přepíná Upgraded Ants v GameRules.
     void OnUpgradedAntsChanged(bool v)
     {
         var gr = GameRules.Instance;
         if (gr != null) gr.upgradedAnts = v;
     }
 
+    // Nastaví počet jídla potřebného na nového mravence.
     void OnFoodPerNewAntEndEdit(string text)
     {
         var gr = GameRules.Instance;
@@ -217,9 +289,6 @@ public class LevelEditorUI : MonoBehaviour
         gr.foodPerNewAnt = val;
         if (foodPerNewAntInput) foodPerNewAntInput.text = val.ToString();
     }
-    
-    public void OnResetBtn()
-    {
-        if (editor) editor.ResetLevel();
-    }
+
+    #endregion
 }

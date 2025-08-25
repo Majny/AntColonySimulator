@@ -4,29 +4,51 @@ using UnityEngine.InputSystem;
 
 public class PheromoneVisibilityCycler : MonoBehaviour
 {
-    [Header("Hotkey (forced to F at runtime)")]
-    public Key hotkey = Key.F;
+    // ─────────────────────────────────────────────────────────────────────────────
+    // KONFIGURACE Z INSPECTORU
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Konfigurace
+
+    [Header("Hotkey")]
+    public Key hotkey = Key.F;          // Klávesa pro přepínání viditelnosti týmů (v runtime přepíše na F)
 
     [Header("Timing")]
-    public float initialScanDelay = 0.35f;
+    public float initialScanDelay = 0.35f; // Po kolika s od startu poprvé naskenovat týmy
+    public float rescanEvery = 0.5f;       // Jak často přestavět pořadí týmů (detekce nových/zmizelých)
 
-    public float rescanEvery = 0.5f;
+    #endregion
 
-    readonly List<int> teamOrder = new();
-    int currentIndex = -1;
-    float rescanTimer;
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // VNITŘNÍ STAV
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Vnitřní stav
+
+    readonly List<int> teamOrder = new(); // Seřazený seznam týmů s dostupnými poli
+    int currentIndex = -1;                // Index aktuálně zobrazeného týmu (-1 = žádný)
+    float rescanTimer;                    // Akumulátor času pro periodický rescan
+
+    #endregion
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // UNITY LIFECYCLE
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Unity lifecycle
 
     void OnEnable()
     {
         hotkey = Key.F;
     }
 
+    // Připraví výchozí stav a naplánuje první sken týmů po malé prodlevě.
     void Start()
     {
         currentIndex = -1;
         Invoke(nameof(InitialScanAndApply), initialScanDelay);
     }
 
+    // Naslouchá klávese pro přepnutí a periodicky znovu sestavuje seznam týmů.
     void Update()
     {
         var kbd = Keyboard.current;
@@ -50,12 +72,22 @@ public class PheromoneVisibilityCycler : MonoBehaviour
         }
     }
 
+    #endregion
+
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // CYKLOVÁNÍ VIDITELNOSTI
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Cyklení
+
+    // Provede první sken týmů a aplikuje výsledek na viditelnost polí.
     void InitialScanAndApply()
     {
         BuildOrder();
         ApplyVisibility();
     }
 
+    // Posune výběr na další tým a aplikuje viditelnost.
     void Advance()
     {
         int count = BuildOrder();
@@ -71,6 +103,7 @@ public class PheromoneVisibilityCycler : MonoBehaviour
         ApplyVisibility();
     }
 
+    // Znovu sestaví a seřadí seznam týmů, které mají alespoň jedno feromonové pole.
     int BuildOrder()
     {
         teamOrder.Clear();
@@ -87,6 +120,7 @@ public class PheromoneVisibilityCycler : MonoBehaviour
         return teamOrder.Count;
     }
 
+    // Zapne viditelnost feromonových polí jen aktivnímu týmu.
     void ApplyVisibility()
     {
         if (TeamManager.Instance == null) return;
@@ -105,4 +139,6 @@ public class PheromoneVisibilityCycler : MonoBehaviour
             if (data.foodField) data.foodField.SetVisible(visible);
         }
     }
+
+    #endregion
 }
