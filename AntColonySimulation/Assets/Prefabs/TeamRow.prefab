@@ -486,7 +486,7 @@ GameObject:
   - component: {fileID: 7877415289518784517}
   - component: {fileID: 668905801876986880}
   - component: {fileID: 1848281424806428336}
-  - component: {fileID: 34396606358265044}
+  - component: {fileID: 2703136021038851984}
   m_Layer: 5
   m_Name: TeamRow
   m_TagString: Untagged
@@ -563,7 +563,7 @@ MonoBehaviour:
   m_FlexibleWidth: -1
   m_FlexibleHeight: -1
   m_LayoutPriority: 1
---- !u!114 &34396606358265044
+--- !u!114 &2703136021038851984
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -572,7 +572,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 4306490488930712821}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e2cc00e92ad640dca0b7070fa05bb95f, type: 3}
+  m_Script: {fileID: 11500000, guid: 07f5d9aea1a604691a2e82f68af15eac, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   colorSwatch: {fileID: 3840962971900727951}

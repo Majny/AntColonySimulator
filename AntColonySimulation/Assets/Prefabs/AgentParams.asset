@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17330092df846153ebd538f9adf65589, type: 3}
+  m_Name: AgentParams
+  m_EditorClassIdentifier: 
+  maxSpeed: 2
+  acceleration: 3
+  maxIntegrationStep: 0.01
+  steerStrength: 1.8
+  targetSteerStrength: 3
+  randomSteerStrength: 0.35
+  randomSteerMaxDuration: 1.5
+  detectionRadius: 2.5
+  pickupDistance: 0.15
+  timeBetweenSensorUpdate: 0.1
+  pheromoneSensorAngle: 25
+  pheromoneSensorDistance: 1.25
+  pheromoneSensorSize: 0.75
+  pheromoneSpacing: 0.75
+  pheromoneRunOutTime: 70
+  pheromoneEvaporateTime: 100
+  collisionRadius: 0.15
+  collisionAvoidSteerStrength: 5
+  antennaDistance: 0.25
+  antennaOffset: 0.2
+  whiskersPerSide: 2
+  whiskerFOV: 35
+  whiskerDistanceMultiplier: 1.4
+  avoidMemory: 0.25

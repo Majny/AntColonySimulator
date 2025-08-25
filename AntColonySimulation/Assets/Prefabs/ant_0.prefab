@@ -73,8 +73,8 @@ GameObject:
   - component: {fileID: 3991932984380066699}
   - component: {fileID: 6573118783466848159}
   - component: {fileID: 5767892071891485018}
-  - component: {fileID: -753088674286991747}
   - component: {fileID: 7509270989727604040}
+  - component: {fileID: 5322229097525226541}
   m_Layer: 0
   m_Name: ant_0
   m_TagString: Untagged
@@ -190,30 +190,6 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
   m_Radius: 2.76
---- !u!114 &-753088674286991747
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8859006602413723701}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a8788c6513f1c25c69d3778e137d8c70, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  parameters: {fileID: 11400000, guid: 8b2d7204467f91fbc9206b933c505e0a, type: 2}
-  sensorOrigin: {fileID: 0}
-  head: {fileID: 0}
-  foodLayer:
-    serializedVersion: 2
-    m_Bits: 64
-  nestLayer:
-    serializedVersion: 2
-    m_Bits: 128
-  obstacleMask:
-    serializedVersion: 2
-    m_Bits: 256
 --- !u!50 &7509270989727604040
 Rigidbody2D:
   serializedVersion: 5
@@ -241,3 +217,27 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
+--- !u!114 &5322229097525226541
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8859006602413723701}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 36ce08d0b2facd3098d43af780022c37, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  parameters: {fileID: 11400000, guid: 54886a1664cc5d3eaaa0a07d8abb4a9d, type: 2}
+  sensorOrigin: {fileID: 5399089858750120886}
+  head: {fileID: 4599017137823039850}
+  foodLayer:
+    serializedVersion: 2
+    m_Bits: 64
+  nestLayer:
+    serializedVersion: 2
+    m_Bits: 128
+  obstacleMask:
+    serializedVersion: 2
+    m_Bits: 256

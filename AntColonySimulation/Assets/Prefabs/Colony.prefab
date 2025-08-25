@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3258824084989372027}
-  - component: {fileID: 2676734043728162018}
+  - component: {fileID: 7380385296361174940}
   m_Layer: 7
   m_Name: Colony
   m_TagString: Untagged
@@ -35,7 +35,7 @@ Transform:
   - {fileID: 430701662346932074}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2676734043728162018
+--- !u!114 &7380385296361174940
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -44,18 +44,20 @@ MonoBehaviour:
   m_GameObject: {fileID: 832498785308192109}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3f714e73162a4ee3889466c8e78ebb72, type: 3}
+  m_Script: {fileID: 11500000, guid: 01041ca54de33e400b9fa808805a59a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  agentParams: {fileID: 11400000, guid: 8b2d7204467f91fbc9206b933c505e0a, type: 2}
-  agentPrefab: {fileID: -753088674286991747, guid: 59c6335f6e0ae2011bf721ed442cfeaf, type: 3}
-  initialAgents: 500
-  agentsParent: {fileID: 8455811191107452664}
-  homeMarkersField: {fileID: 0}
-  foodMarkersField: {fileID: 0}
+  agentParams: {fileID: 11400000, guid: 54886a1664cc5d3eaaa0a07d8abb4a9d, type: 2}
+  agentPrefab: {fileID: 5322229097525226541, guid: 59c6335f6e0ae2011bf721ed442cfeaf, type: 3}
+  initialAgents: 20
+  agentsParent: {fileID: 0}
+  teamId: 0
+  teamColor: {r: 1, g: 1, b: 1, a: 1}
+  homeFieldPrefab: {fileID: 0}
+  foodFieldPrefab: {fileID: 0}
   spawnRadius: 2
   graphic: {fileID: 6514147616722434732}
-  foodCounter: {fileID: 1171906469289324388}
+  foodCounter: {fileID: 0}
 --- !u!1 &2064729287322954198
 GameObject:
   m_ObjectHideFlags: 0
@@ -117,7 +119,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: -4329058811901154584, guid: c0bfd11f7c58b04e09762b07a6e041fb, type: 2}
+  - {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -161,8 +163,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: 0
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: c0bfd11f7c58b04e09762b07a6e041fb, type: 2}
-  m_sharedMaterial: {fileID: -4329058811901154584, guid: c0bfd11f7c58b04e09762b07a6e041fb, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
