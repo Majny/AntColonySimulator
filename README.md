@@ -58,8 +58,8 @@ Vizuální ukázka běžící simulace:
 
 ## Dokumentace
 
-* **[Uživatelská příručka](DOCS/user-guide.md)** – návod k ovládání a používání simulace.
-* **[Developer guide](DOCS/developer-guide.md)** – technické detaily, architektura a UML diagramy.
+* **[Uživatelská dokumentace](DOCS/user-guide.md)** – návod k ovládání a používání simulace.
+* **[Programátorská_dokumentace](DOCS/developer-guide.md)** – technické detaily.
 
 ---
 
