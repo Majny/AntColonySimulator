@@ -3,6 +3,11 @@ using UnityEngine;
 [System.Serializable]
 public class AntGenome
 {
+    // ─────────────────────────────────────────────────────────────────────────────
+    // KONFIGURACE A VÝCHOZÍ VLASTNOSTI
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Multiplikátory & Factory
+    
     // Multiplikátory
     public float speedMult = 1f;
     public float accelMult = 1f;
@@ -31,6 +36,14 @@ public class AntGenome
         pheromoneSpacingMult = UnityEngine.Random.Range(r.pheromoneSpacingMult.x, r.pheromoneSpacingMult.y);
         return this;
     }
+    
+    #endregion
+
+    
+    // ─────────────────────────────────────────────────────────────────────────────
+    // OPERACE S GENOMEM
+    // ─────────────────────────────────────────────────────────────────────────────
+    #region — Operace
 
     // Fluent settery
     public AntGenome WithSpeed(float m) { speedMult = m; return this; }
@@ -72,19 +85,23 @@ public class AntGenome
     public AntGenome Multiply(AntGenome other)
     {
         if (other == null) return this;
-        speedMult            *= other.speedMult;
-        accelMult            *= other.accelMult;
-        steerMult            *= other.steerMult;
-        sensorDistanceMult   *= other.sensorDistanceMult;
-        randomSteerMult      *= other.randomSteerMult;
-        pheromoneRunOutMult  *= other.pheromoneRunOutMult;
+        speedMult *= other.speedMult;
+        accelMult *= other.accelMult;
+        steerMult *= other.steerMult;
+        sensorDistanceMult *= other.sensorDistanceMult;
+        randomSteerMult *= other.randomSteerMult;
+        pheromoneRunOutMult *= other.pheromoneRunOutMult;
         pheromoneSpacingMult *= other.pheromoneSpacingMult;
         return this;
     }
 }
 
+#endregion
 
-// ————————————  Fluent Randomizer  ————————————
+// ─────────────────────────────────────────────────────────────────────────────
+// RANDOMIZER + EXTENSIONS
+// ─────────────────────────────────────────────────────────────────────────────
+#region — Randomizer & Extensions
 
 public sealed class AntGenomeRandomizer
 {
@@ -150,3 +167,5 @@ public static class AntGenomeFluentExtensions
     public static AgentParameters Apply(this AgentParameters p, AntGenome g)
         => g?.ApplyTo(p);
 }
+
+#endregion
