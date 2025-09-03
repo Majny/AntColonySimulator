@@ -65,7 +65,6 @@ public class LevelEditor : MonoBehaviour
     #region — Vnitřní stav
 
     Tool currentTool = Tool.None;                    // Aktivní nástroj editace
-    bool editing = true;                             // Je editor v režimu editace?
 
     Camera cam;                                      // Aktivní kamera
     SpriteRenderer preview;                          // Kruh náhledu pro Dirt/Rubber
@@ -98,16 +97,15 @@ public class LevelEditor : MonoBehaviour
     // Po znovu-aktivaci komponenty zajistí, že náhled existuje a je skrytý.
     void OnEnable()
     {
-        EnsurePreview();
         if (preview) preview.enabled = false;
     }
 
     // Řídí vstup z myši, vykreslování náhledu a průběh kreslení/mazání během editace.
     void Update()
     {
-        if (!editing || cam == null) return;
+        if (cam == null) return;
 
-        // Pozice kurzoru ve světě
+        // Pozice kurzoru
         Vector2 screen = Mouse.current.position.ReadValue();
         Vector2 worldPos = cam.ScreenToWorldPoint(screen);
 
@@ -120,7 +118,6 @@ public class LevelEditor : MonoBehaviour
         }
 
         // Náhled štětce
-        EnsurePreview();
         if (preview) preview.transform.position = worldPos;
 
         // Začátek tahu / umístění objektu
@@ -203,7 +200,6 @@ public class LevelEditor : MonoBehaviour
     // Přepnutí z editace do simulace, aktivujeme hnízda.
     public void StartSimulation()
     {
-        editing = false;
         currentTool = Tool.None;
         if (preview) preview.enabled = false;
 
@@ -231,7 +227,6 @@ public class LevelEditor : MonoBehaviour
     void SetTool(Tool t)
     {
         currentTool = t;
-        EnsurePreview();
         if (preview)
             preview.enabled = ((t == Tool.Dirt) || (t == Tool.Rubber)) && preview.sprite != null;
 
@@ -250,7 +245,7 @@ public class LevelEditor : MonoBehaviour
         if (!preview) preview = go.AddComponent<SpriteRenderer>();
 
         if (previewCircleSprite) preview.sprite = previewCircleSprite;
-        preview.sortingOrder = 900; // nad vším
+        preview.sortingOrder = 900;
         preview.enabled = false;
     }
 
@@ -334,7 +329,7 @@ public class LevelEditor : MonoBehaviour
         if (!col) col = seg.AddComponent<CircleCollider2D>();
         col.isTrigger = dirtIsTrigger;
 
-        // Vizuální měřítko (1x1 sprite → měníme scale)
+        // Vizuální měřítko
         seg.transform.localScale = Vector3.one;
         float scale = dirtRadius * 2f;
         seg.transform.localScale = new Vector3(scale, scale, 1f);
@@ -343,7 +338,7 @@ public class LevelEditor : MonoBehaviour
         float overlap = Mathf.Max(1f, colliderOverlap);
         col.radius = 0.5f * overlap;
 
-        // Marker komponenta (identifikace Dirt objektů)
+        // Marker komponenta
         if (!seg.GetComponent<Dirt>()) seg.AddComponent<Dirt>();
 
         spawnedInEdit.Add(seg);
