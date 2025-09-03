@@ -272,19 +272,29 @@ public class LevelEditor : MonoBehaviour
         var go = Instantiate(prefab, pos, Quaternion.identity);
         spawnedInEdit.Add(go);
 
-        // Inicializace hnízda
+        // Pokud je to Nest, kontrola Dirtu
         if (go.TryGetComponent<NestController>(out var nc))
         {
+            float checkRadius = nc.spawnRadius * 1.1f;
+            int dirtLayer = LayerMask.NameToLayer(dirtObstacleLayerName);
+
+            if (Physics2D.OverlapCircle(pos, checkRadius, 1 << dirtLayer))
+            {
+                // Nest koliduje s Dirt, zrušíme ho
+                Destroy(go);
+                return;
+            }
+
             int tid = Mathf.Clamp(currentTeamIndex, 0, TeamManager.MaxTeams - 1);
             nc.teamId = tid;
             nc.teamColor = TeamManager.TeamColors[tid];
             nc.initialAgents = nestInitialAgents;
 
             if (TeamManager.Instance) TeamManager.Instance.RegisterNest(tid, nc);
-            nc.enabled = false; // Nest poběží až po StartSimulation()
+            nc.enabled = false; // Aktivuje se až při simulaci
         }
 
-        // Inicializace spawneru jídla
+        // Pokud je to FoodSpawner
         if (go.TryGetComponent<FoodSpawner>(out var fs))
             fs.amount = foodAmount;
     }
@@ -313,18 +323,40 @@ public class LevelEditor : MonoBehaviour
         EraseDirtAt(start);
     }
 
-    // Vytvoří jeden segment hlíny na dané pozici a nastaví mu kolize/vzhled.
     void SpawnDirtSegment(Vector2 pos)
     {
         if (!dirtSegmentPrefab) return;
 
+        // Zkontroluj kolizi s Food nebo Nest
+        int n = Physics2D.OverlapCircleNonAlloc(pos, dirtRadius, eraseBuffer, ~0);
+        for (int i = 0; i < n; i++)
+        {
+            var c = eraseBuffer[i];
+            if (!c) continue;
+
+            // Pokud je to FoodSpawner, tak smaž
+            if (c.GetComponentInParent<FoodSpawner>())
+            {
+                Destroy(c.GetComponentInParent<FoodSpawner>().gameObject);
+                continue;
+            }
+
+            // Pokud je to Nest, tak smaž
+            if (c.GetComponentInParent<NestController>())
+            {
+                Destroy(c.GetComponentInParent<NestController>().gameObject);
+                continue;
+            }
+        }
+
+        // Polož Dirt segment
         var seg = Instantiate(dirtSegmentPrefab, pos, Quaternion.identity);
 
         // Vrstva pro kolize s mravenci
         int layer = LayerMask.NameToLayer(dirtObstacleLayerName);
         if (layer >= 0) seg.layer = layer;
 
-        // Zajistíme CircleCollider2D a nastavíme vlastnosti
+        // Zajistím CircleCollider a nastavím vlastnosti
         var col = seg.GetComponent<CircleCollider2D>();
         if (!col) col = seg.AddComponent<CircleCollider2D>();
         col.isTrigger = dirtIsTrigger;
@@ -334,7 +366,7 @@ public class LevelEditor : MonoBehaviour
         float scale = dirtRadius * 2f;
         seg.transform.localScale = new Vector3(scale, scale, 1f);
 
-        // Reálný kolizní radius (polovina průměru) × overlap faktor
+        // Reálný kolizní radius
         float overlap = Mathf.Max(1f, colliderOverlap);
         col.radius = 0.5f * overlap;
 
@@ -343,6 +375,7 @@ public class LevelEditor : MonoBehaviour
 
         spawnedInEdit.Add(seg);
     }
+
 
     // Vymaže všechny Dirt objekty v okolí dané pozice v rozsahu poloměru štětce.
     void EraseDirtAt(Vector2 pos)
