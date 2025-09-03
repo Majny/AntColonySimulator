@@ -17,21 +17,19 @@ public class TeamScoreboard : MonoBehaviour
     [Header("Options")]
     public bool showOnlyTeamsWithNests = false; // Zobrazit jen týmy, které mají alespoň jedno hnízdo
     public bool autoRefresh = true;             // Pravidelně obnovovat obsah
-    public float refreshInterval = 0.5f;        // Interval auto-refresh (s)
+    public float refreshInterval = 0.5f;        // Interval auto-refresh 
 
     [Header("Auto size (panel height)")]
-    public bool autoSize = true;                // Automaticky upravovat výšku panelu
+    public bool autoSize = true;                           // Automaticky upravovat výšku panelu
     [Range(0.2f, 1f)] public float maxHeightRatio = 0.65f; // Max. poměr výšky vůči rodiči
-    public float extraVerticalPadding = 8f;     // Dodatečný vnitřní padding (px)
+    public float extraVerticalPadding = 8f;                // Dodatečný vnitřní padding (px)
 
     [Header("Anchoring / Layout")]
-    public bool lockTopRight = true;            // Ukotvit panel do pravého horního rohu
-    public Vector2 edgeOffset = new(-20f, -20f);// Posun od okraje (px)
 
     [Header("Header")]
-    public int headerFont = 16;                 // Velikost písma hlavičky
-    public float headerStatMinWidth = 44f;      // Min. šířka číselných sloupců v hlavičce
-    public float headerSpacing = 6f;            // Svislé mezery mezi řádky (ovlivní i layout)
+    public int headerFont = 16;            // Velikost písma hlavičky
+    public float headerStatMinWidth = 44f; // Min. šířka číselných sloupců v hlavičce
+    public float headerSpacing = 6f;       // Svislé mezery mezi řádky (ovlivní i layout)
 
     #endregion
 
@@ -44,7 +42,7 @@ public class TeamScoreboard : MonoBehaviour
     readonly Dictionary<int, TeamScoreboardRow> rows = new(); // Mapa teamId → instancovaný řádek
     float refreshTimer;                                       // Akumulátor pro auto-refresh
 
-    RectTransform panel;    // Vlastní RT panelu
+    RectTransform panel;      // Vlastní RT panelu
     RectTransform headerRoot; // RT uzlu hlavičky
 
     #endregion
@@ -55,17 +53,10 @@ public class TeamScoreboard : MonoBehaviour
     // ─────────────────────────────────────────────────────────────────────────────
     #region — Unity lifecycle
 
-    // Připraví ukotvení panelu, zajistí kořen obsahu a vytvoří hlavičku.
+    // Zajistí kořen obsahu a vytvoří hlavičku.
     void Awake()
     {
         panel = GetComponent<RectTransform>();
-
-        if (lockTopRight && panel)
-        {
-            panel.anchorMin = panel.anchorMax = new Vector2(1, 1);
-            panel.pivot = new Vector2(1, 1);
-            panel.anchoredPosition = edgeOffset;
-        }
 
         EnsureContentRoot();
         EnsureHeader();
@@ -90,12 +81,7 @@ public class TeamScoreboard : MonoBehaviour
     void OnValidate()
     {
         if (!panel) panel = GetComponent<RectTransform>();
-        if (panel && lockTopRight)
-        {
-            panel.anchorMin = panel.anchorMax = new Vector2(1, 1);
-            panel.pivot = new Vector2(1, 1);
-            panel.anchoredPosition = edgeOffset;
-        }
+
         if (contentRoot) AnchorContent(contentRoot);
     }
 
@@ -107,7 +93,7 @@ public class TeamScoreboard : MonoBehaviour
     // ─────────────────────────────────────────────────────────────────────────────
     #region — Veřejné API
 
-    // Znovu sestaví seznam týmů, vytvoří/aktualizuje řádky a přepočítá výšku panelu.
+    // Znovu sestaví seznam týmů.
     public void TryRebuild()
     {
         if (TeamManager.Instance == null || !contentRoot) return;
@@ -157,11 +143,7 @@ public class TeamScoreboard : MonoBehaviour
 
         if (autoSize) RecalculateHeight();
     }
-
-    // Kontextové menu v Inspectoru: okamžitě vynutí rebuild tabulky.
-    [ContextMenu("Force Rebuild Now")]
-    public void ForceRebuildNow() => TryRebuild();
-
+    
     #endregion
 
 
