@@ -18,7 +18,7 @@ public class TimeScaleHotkeys : MonoBehaviour
     [Header("Speed settings")]
     public float step = 0.5f;
     public float min = 0f;
-    public float max = 10f;
+    public float max = 3f;
     public float initial = 1f;
     public bool setInitialOnAwake = true;
 
