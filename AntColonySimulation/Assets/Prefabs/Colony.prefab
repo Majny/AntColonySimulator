@@ -57,7 +57,7 @@ MonoBehaviour:
   foodFieldPrefab: {fileID: 0}
   spawnRadius: 2
   graphic: {fileID: 6514147616722434732}
-  foodCounter: {fileID: 0}
+  foodCounter: {fileID: 1171906469289324388}
 --- !u!1 &2064729287322954198
 GameObject:
   m_ObjectHideFlags: 0
