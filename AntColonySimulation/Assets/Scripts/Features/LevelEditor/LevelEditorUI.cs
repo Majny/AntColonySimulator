@@ -159,7 +159,7 @@ public class LevelEditorUI : MonoBehaviour
     // Změní aktivní tým po výběru v dropdownu.
     void OnTeamDropdownChanged(int idx) => editor.SelectTeam(idx);
 
-    // Nastaví množství jídla přes slider a synchronizuje input.
+    // Nastaví množství jídla.
     void OnFoodSliderChanged(int val)
     {
         if (isUpdatingUI) return;

@@ -88,7 +88,9 @@ public class TeamManager : MonoBehaviour
         for (int i = 0; i < MaxTeams; i++)
         {
             teams[i] = new TeamData {
-                teamId = i, teamName = TeamNames[i], teamColor = TeamColors[i]
+                teamId = i,
+                teamName = TeamNames[i],
+                teamColor = TeamColors[i]
             };
         }
 
@@ -180,10 +182,10 @@ public class TeamManager : MonoBehaviour
     public int GetTeamFoodCount(int teamId) => teams.TryGetValue(teamId, out var t) ? t.totalFoodCollected : 0;
 
     // Vrátí barvu týmu.
-    public Color GetTeamColor(int teamId)    => teams.TryGetValue(teamId, out var t) ? t.teamColor : Color.white;
+    public Color GetTeamColor(int teamId) => teams.TryGetValue(teamId, out var t) ? t.teamColor : Color.white;
 
     // Vrátí název týmu.
-    public string GetTeamName(int teamId)    => teams.TryGetValue(teamId, out var t) ? t.teamName : $"Team {teamId}";
+    public string GetTeamName(int teamId) => teams.TryGetValue(teamId, out var t) ? t.teamName : $"Team {teamId}";
 
     // Vrátí referenci na celou tabulku týmů.
     public Dictionary<int, TeamData> GetAll() => teams;
