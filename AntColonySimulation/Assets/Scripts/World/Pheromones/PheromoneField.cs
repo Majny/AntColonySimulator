@@ -60,10 +60,7 @@ public class PheromoneField : MonoBehaviour
         if (particleDisplay == null)
             particleDisplay = GetComponentInChildren<ParticleSystem>(true) ?? GetComponent<ParticleSystem>();
 
-        float perceptionRadius = Mathf.Max(
-            0.01f,
-            (agentParams != null && agentParams.pheromoneSensorSize > 0f) ? agentParams.pheromoneSensorSize : 0.75f
-        );
+        float perceptionRadius = agentParams.pheromoneSensorSize;
         
         numCellsX = Mathf.CeilToInt(area.x / perceptionRadius);
         numCellsY = Mathf.CeilToInt(area.y / perceptionRadius);
@@ -81,11 +78,7 @@ public class PheromoneField : MonoBehaviour
         {
             if (!particleDisplay.isPlaying) particleDisplay.Play();
             var rend = particleDisplay.GetComponent<Renderer>();
-            if (rend) rend.sortingOrder = 9999;
-        }
-        else
-        {
-            Debug.LogWarning($"[PheromoneField] No ParticleSystem found on {name}. Trails will be invisible.");
+            if (rend) rend.sortingOrder = 9999; // Prostě nahoře
         }
     }
 
@@ -94,13 +87,13 @@ public class PheromoneField : MonoBehaviour
     {
         if (particleDisplay == null) return;
 
-        float life = (agentParams != null ? agentParams.pheromoneEvaporateTime : 10f);
+        float life = agentParams.pheromoneEvaporateTime;
 
         emitParams.startLifetime = life;
         emitParams.startSize = pheremoneSize;
 
         var m = particleDisplay.main;
-        m.simulationSpace = ParticleSystemSimulationSpace.World;
+        m.simulationSpace = ParticleSystemSimulationSpace.World; // Nehýbou se s objektem
         m.maxParticles = 100 * 1000;
 
         var c = particleDisplay.colorOverLifetime;
@@ -179,6 +172,8 @@ public class PheromoneField : MonoBehaviour
                     var next = node.Next;
 
                     float weight = cur.initialWeight;
+                    
+                    // Pokud je stopa starší než evap, tak se smaže
                     if (!infinite)
                     {
                         float age = now - cur.creationTime;
