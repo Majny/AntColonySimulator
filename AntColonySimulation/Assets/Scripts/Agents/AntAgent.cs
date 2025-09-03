@@ -631,4 +631,24 @@ public class AntAgent : MonoBehaviour
         if (myTeamId >= 0)
             TeamManager.Instance?.UnregisterAnt(myTeamId);
     }
+    
+    void OnDrawGizmos()
+    {
+        Gizmos.color = Color.blue;
+        Gizmos.DrawLine(transform.position, transform.position + (Vector3)randomSteer);
+
+        Gizmos.color = Color.green;
+        Gizmos.DrawLine(transform.position, transform.position + (Vector3)pheromoneSteer);
+
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawLine(transform.position, transform.position + (Vector3)targetSteer);
+
+        Gizmos.color = Color.red;
+        Gizmos.DrawLine(transform.position, transform.position + (Vector3)obstacleAvoidForce);
+
+        Gizmos.color = Color.white;
+        Vector2 total = randomSteer + pheromoneSteer + targetSteer + obstacleAvoidForce;
+        Gizmos.DrawLine(transform.position, transform.position + (Vector3)total);
+    }
+
 }

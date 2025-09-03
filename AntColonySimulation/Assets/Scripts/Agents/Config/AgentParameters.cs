@@ -14,10 +14,7 @@ public class AgentParameters : ScriptableObject
 
     [Tooltip("Rychlost přibližování k cílové rychlosti.")]
     public float acceleration = 3f;
-
-    [Tooltip("Max. délka integračního kroku pro sub-stepping (s). Menší = stabilnější při vysokém timeScale.")]
-    public float maxIntegrationStep = 0.01f;
-
+    
     #endregion
 
 
@@ -72,7 +69,7 @@ public class AgentParameters : ScriptableObject
     [Tooltip("Vzdálenost před agentem, kde se senzory odečítají.")]
     public float pheromoneSensorDistance = 1.25f;
 
-    [Tooltip("Velikost vzorkovací oblasti senzoru (rádius).")]
+    [Tooltip("Velikost vzorkovací oblasti senzoru.")]
     public float pheromoneSensorSize = 0.75f;
 
     #endregion
@@ -113,19 +110,6 @@ public class AgentParameters : ScriptableObject
 
     [Tooltip("Příčná vzdálenost mezi levou/pravou anténou.")]
     public float antennaOffset = 0.20f;
-
-    [Header("Whiskers (vějíř paprsků)")]
-    [Tooltip("Počet whisker paprsků na KAŽDÉ straně (kromě středového).")]
-    public int whiskersPerSide = 2;
-
-    [Tooltip("Poloviční FOV vějíře (stupně) od směru dopředu.")]
-    public float whiskerFOV = 35f;
-
-    [Tooltip("Násobič délky whisker paprsků vůči antennaDistance.")]
-    public float whiskerDistanceMultiplier = 1.4f;
-
-    [Tooltip("Jak dlouho držet vyhýbací sílu po detekci (s).")]
-    public float avoidMemory = 0.25f;
 
     #endregion
 }
