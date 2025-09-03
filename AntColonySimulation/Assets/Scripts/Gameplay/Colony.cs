@@ -28,7 +28,7 @@ public class NestController : MonoBehaviour
 
     [Header("Graphics (optional)")]
     public Transform graphic;             // Volitelný vizuál hnízda
-    public TextMeshPro foodCounter;       // Volitelný counter nasbíraného jídla
+    public TMP_Text foodCounter;       // Volitelný counter nasbíraného jídla
 
     #endregion
 
