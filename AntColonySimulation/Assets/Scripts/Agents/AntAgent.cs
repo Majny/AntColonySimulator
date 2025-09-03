@@ -445,6 +445,9 @@ public class AntAgent : MonoBehaviour
 
             // ignoruj sebrané
             if (col.TryGetComponent(out FoodItem fi) && fi.taken) continue;
+            
+            // ignoruj jidlo, které není v LOS
+            if (Physics2D.Linecast(transform.position, col.transform.position, obstacleMask)) continue;
 
             float d2 = ((Vector2)col.transform.position - (Vector2)transform.position).sqrMagnitude;
             if (d2 < bestD2)
