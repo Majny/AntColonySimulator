@@ -4878,7 +4878,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 54658e824eb283ddd87f807d879e812e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  area: {x: 120, y: 66}
+  area: {x: 116, y: 64}
   agentParams: {fileID: 11400000, guid: 54886a1664cc5d3eaaa0a07d8abb4a9d, type: 2}
   particleDisplay: {fileID: 5192216119499646297}
   pheremoneColor: {r: 0, g: 0.1404357, b: 1, a: 1}
