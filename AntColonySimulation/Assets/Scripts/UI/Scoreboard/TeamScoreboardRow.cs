@@ -9,10 +9,10 @@ public class TeamScoreboardRow : MonoBehaviour
     // ─────────────────────────────────────────────────────────────────────────────
     #region — UI refs
 
-    public Image colorSwatch;   // Barevný štítek týmu
-    public TMP_Text nameText;   // Název týmu
-    public TMP_Text antsText;   // Počet mravenců
-    public TMP_Text foodText;   // Nasbírané jídlo
+    public Image colorSwatch; // Barevný štítek týmu
+    public TMP_Text nameText; // Název týmu
+    public TMP_Text antsText; // Počet mravenců
+    public TMP_Text foodText; // Nasbírané jídlo
 
     #endregion
 
@@ -26,9 +26,9 @@ public class TeamScoreboardRow : MonoBehaviour
     public void Set(Color c, string name, int ants, int food)
     {
         if (colorSwatch) colorSwatch.color = c;
-        if (nameText)    nameText.text    = name;
-        if (antsText)    antsText.text    = ants.ToString();
-        if (foodText)    foodText.text    = food.ToString();
+        if (nameText) nameText.text = name;
+        if (antsText) antsText.text = ants.ToString();
+        if (foodText) foodText.text = food.ToString();
     }
 
     #endregion
