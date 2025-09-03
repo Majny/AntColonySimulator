@@ -7,22 +7,22 @@ public class FoodSpawner : MonoBehaviour
     // ─────────────────────────────────────────────────────────────────────────────
     #region — Konfigurace
 
-    public float radius = 3f;                 // Poloměr oblasti spawnu
+    [Header("Basic")]
+    public float radius = 3f;                 // Poloměr hlavního kruhu spawnu
     public int amount = 20;                   // Cílový počet kusů jídla
     public bool maintainAmount = true;        // Udržovat průběžně cílový počet
     public float timeBetweenSpawns = 2f;      // Interval mezi auto-spawny
     public GameObject foodPrefab;             // Prefab položky jídla
 
     [Header("Clustering")]
-    public int blobCount = 1;                 // Počet shluků v rámci oblasti
+    public int blobCount = 1;                 // Počet dodatečných shluků
     public int seed = 0;                      // Seed pro deterministické rozmístění
-    
-        [Header("Spawn rules")]
-    public float spawnClearanceRadius = 0.25f; // Odstup od hlíny
-    public LayerMask obstacleMask;             // Nastav na vrstvu "Obstacle"
-    public PheromoneField playArea;            // Stejná area jako v LevelEditoru
-    public int maxSpawnTries = 6;              // Kolikrát zkusit najít validní místo
 
+    [Header("Spawn rules")]
+    public float clearance = 0.25f;           // Minimální odstup od překážek
+    public LayerMask dirtMask;                // Vrstva pro Dirt
+    public LayerMask nestMask;                // Vrstva pro Nest
+    public int maxSpawnTries = 6;             // Kolikrát zkusit najít validní místo
 
     #endregion
 
@@ -32,9 +32,9 @@ public class FoodSpawner : MonoBehaviour
     // ─────────────────────────────────────────────────────────────────────────────
     #region — Vnitřní stav
 
-    System.Random prng;       // Nezávislý PRNG pro výběr blobu
-    Vector3[] blobs;          // Pole shluků: (x, y, r)
-    float nextSpawnTime;      // Čas dalšího automatického spawnu
+    System.Random prng;
+    Vector3[] blobs;
+    float nextSpawnTime;
 
     #endregion
 
@@ -44,19 +44,16 @@ public class FoodSpawner : MonoBehaviour
     // ─────────────────────────────────────────────────────────────────────────────
     #region — Unity lifecycle
 
-    // Připraví shluky (centra a jejich poloměry) podle seedu a radiusu.
     void Awake()
     {
         BuildBlobs();
     }
 
-    // Naplní spawner počátečním množstvím a nastaví čas spawnu.
     void Start()
     {
         Rebuild();
     }
 
-    // Průběžně doplňuje chybějící kusy jídla podle intervalu.
     void Update()
     {
         if (!maintainAmount || foodPrefab == null) return;
@@ -76,7 +73,6 @@ public class FoodSpawner : MonoBehaviour
     // ─────────────────────────────────────────────────────────────────────────────
     #region — Veřejné akce
 
-    // Editorová akce: smaže všechny potomky a znovu je naspawnuje dle 'amount'.
     [ContextMenu("Rebuild")]
     public void Rebuild()
     {
@@ -97,14 +93,12 @@ public class FoodSpawner : MonoBehaviour
     // ─────────────────────────────────────────────────────────────────────────────
     #region — Helpers
 
-    // Vytvoří seznam shluků.
     void BuildBlobs()
     {
         Random.InitState(seed);
         prng = new System.Random(seed);
 
         blobs = new Vector3[blobCount + 1];
-
         blobs[0] = new Vector3(transform.position.x, transform.position.y, radius);
 
         for (int i = 0; i < blobCount; i++)
@@ -115,22 +109,40 @@ public class FoodSpawner : MonoBehaviour
         }
     }
 
-    // Vytvoří jeden kus jídla v rámci náhodně zvoleného shluku.
+    // Zkontroluje, zda pozice není v Dirt ani v Nest
+    bool IsValidSpawn(Vector2 position)
+    {
+        if (Physics2D.OverlapCircle(position, clearance, dirtMask) != null)
+            return false;
+
+        if (Physics2D.OverlapCircle(position, clearance, nestMask) != null)
+            return false;
+
+        return true;
+    }
+
     void SpawnFood()
     {
-        if (foodPrefab == null) return;
+        if (foodPrefab == null || blobs == null || blobs.Length == 0) return;
 
-        Vector3 blob = blobs[prng.Next(0, blobs.Length)];
-        Vector2 p = (Vector2)blob + Random.insideUnitCircle.normalized * blob.z * Mathf.Min(Random.value, Random.value);
+        for (int attempt = 0; attempt < maxSpawnTries; attempt++)
+        {
+            Vector3 blob = blobs[prng.Next(0, blobs.Length)];
+            Vector2 p = (Vector2)blob + Random.insideUnitCircle.normalized * blob.z * Mathf.Min(Random.value, Random.value);
 
-        var go = Instantiate(foodPrefab, p, Quaternion.identity, transform);
+            if (!IsValidSpawn(p))
+                continue;
 
-        int foodLayer = LayerMask.NameToLayer("Food");
-        if (foodLayer >= 0) go.layer = foodLayer;
+            var go = Instantiate(foodPrefab, p, Quaternion.identity, transform);
+
+            int foodLayer = LayerMask.NameToLayer("Food");
+            if (foodLayer >= 0) go.layer = foodLayer;
+
+            return;
+        }
     }
 
     #if UNITY_EDITOR
-    // V editoru vykreslí pomocnou kružnici oblasti spawnu.
     void OnDrawGizmosSelected()
     {
         Gizmos.color = new Color(1f, 1f, 1f, 0.35f);
