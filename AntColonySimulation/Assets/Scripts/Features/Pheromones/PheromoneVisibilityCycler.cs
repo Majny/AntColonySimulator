@@ -10,11 +10,10 @@ public class PheromoneVisibilityCycler : MonoBehaviour
     #region — Konfigurace
 
     [Header("Hotkey")]
-    public Key hotkey = Key.F;          // Klávesa pro přepínání viditelnosti týmů (v runtime přepíše na F)
+    public Key hotkey = Key.F;             // Klávesa pro přepínání viditelnosti týmů (v runtime přepíše na F)
 
     [Header("Timing")]
-    public float initialScanDelay = 0.35f; // Po kolika s od startu poprvé naskenovat týmy
-    public float rescanEvery = 0.5f;       // Jak často přestavět pořadí týmů (detekce nových/zmizelých)
+    public float rescanEvery = 0.5f;       // Jak často přestavět pořadí týmů, spíše pro možné rozšíření o další módy
 
     #endregion
 
@@ -35,17 +34,13 @@ public class PheromoneVisibilityCycler : MonoBehaviour
     // UNITY LIFECYCLE
     // ─────────────────────────────────────────────────────────────────────────────
     #region — Unity lifecycle
-
-    void OnEnable()
-    {
-        hotkey = Key.F;
-    }
+    
 
     // Připraví výchozí stav a naplánuje první sken týmů po malé prodlevě.
     void Start()
     {
         currentIndex = -1;
-        Invoke(nameof(InitialScanAndApply), initialScanDelay);
+        InitialScanAndApply();
     }
 
     // Naslouchá klávese pro přepnutí a periodicky znovu sestavuje seznam týmů.
@@ -59,6 +54,7 @@ public class PheromoneVisibilityCycler : MonoBehaviour
                 Advance();
         }
 
+        // V momentalní verzi zbytečné, rozšíření pro přidávání/odebíraní týmu za Runtimu
         rescanTimer += Time.deltaTime;
         if (rescanTimer >= rescanEvery)
         {
@@ -93,8 +89,7 @@ public class PheromoneVisibilityCycler : MonoBehaviour
         int count = BuildOrder();
         if (count == 0) return;
 
-        if (currentIndex == -1)
-            currentIndex = 0;
+        if (currentIndex == -1) currentIndex = 0;
         else
         {
             currentIndex++;
