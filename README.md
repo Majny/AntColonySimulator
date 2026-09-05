@@ -1,5 +1,34 @@
 # Ant Colony Simulator
 
+**A multi-colony ant foraging simulator in Unity/C#, built to watch global structure emerge
+from purely local rules.** Every ant decides using only what it can sense where it stands —
+pheromone concentration, food, obstacles, the direction of its nest — and no ant has a map.
+Legible trails, route selection and competition between colonies are all emergent.
+
+![Simulation](DOCS/images/game.png)
+
+**Features.** Pheromone trails with diffusion and decay · a per-colony genome (speed, sensitivity,
+deposition and diffusion multipliers) that lets distinct "strains" evolve different strategies ·
+several colonies running in parallel for direct comparison · a sandbox editor for drawing maps
+(nests, food, obstacles).
+
+**Built with** C# and Unity (2D, grid + objects), with a fluent API for genome configuration.
+Course project for *Advanced C# Programming* at MFF UK, Charles University.
+
+**Docs.** [User guide](DOCS/user-guide.md) · [Developer guide](DOCS/developer-guide.md) — both in Czech,
+with PlantUML architecture diagrams in [`DOCS/diagrams/`](DOCS/diagrams/).
+
+**Run it.** Clone the repository, open it in Unity Hub, and play the scene. *Editor mode* lets you
+draw the map; *Simulation mode* runs the colonies.
+
+*Jakub Dvořák · [kubadvorak.com](https://kubadvorak.com)*
+
+---
+
+## Česky
+
+# Ant Colony Simulator
+
 Tento projekt vznikl jako zápočtový program v rámci kurzu **Pokročilé programování v C#** na MFF UK.
 
 * Autor: **Jakub Dvořák**
