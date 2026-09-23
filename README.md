@@ -1,22 +1,22 @@
 # Ant Colony Simulator
 
 **A multi-colony ant foraging simulator in Unity/C#, built to watch global structure emerge
-from purely local rules.** Every ant decides using only what it can sense where it stands —
-pheromone concentration, food, obstacles, the direction of its nest — and no ant has a map.
+from purely local rules.** Every ant decides using only what it can sense where it stands
+(pheromone concentration, food, obstacles, the direction of its nest), and no ant has a map.
 Legible trails, route selection and competition between colonies are all emergent.
 
 ![Simulation](DOCS/images/game.png)
 
-**Features.** Pheromone trails with diffusion and decay · a per-colony genome (speed, sensitivity,
-deposition and diffusion multipliers) that lets distinct "strains" evolve different strategies ·
-several colonies running in parallel for direct comparison · a sandbox editor for drawing maps
+**Features.** Pheromone trails that evaporate over time · an optional per-ant genome (random multipliers
+for speed, steering, sensor range, pheromone run-out and spacing) so individual ants behave differently ·
+several colonies simulated side by side for direct comparison · a sandbox editor for drawing maps
 (nests, food, obstacles).
 
 **Built with** C# and Unity (2D, grid + objects), with a fluent API for genome configuration.
 Course project for *Advanced C# Programming* at MFF UK, Charles University.
 
-**Docs.** [User guide](DOCS/user-guide.md) · [Developer guide](DOCS/developer-guide.md) — both in Czech,
-with PlantUML architecture diagrams in [`DOCS/diagrams/`](DOCS/diagrams/).
+**Docs.** [User guide](DOCS/user-guide.md) · [Developer guide](DOCS/developer-guide.md), both in Czech,
+with a PlantUML state diagram of the ant agent in [`DOCS/diagrams/`](DOCS/diagrams/).
 
 **Run it.** Clone the repository, open it in Unity Hub, and play the scene. *Editor mode* lets you
 draw the map; *Simulation mode* runs the colonies.
@@ -46,12 +46,12 @@ Vizuální ukázka běžící simulace:
 
 ##  Hlavní funkce
 
-* **Hledání potravy** – mravenci prozkoumávají mapu a sbírají zdroje.
-* **Feromonové stopy** – každý jedinec ukládá do prostředí feromon, který pomáhá ostatním zorientovat se.
-* **Návrat do hnízda** – nasbíraná potrava je transportována zpět a zvyšuje skóre kolonie.
-* **Více týmů** – simulace podporuje paralelní běh několika kolonií a porovnávání jejich chování.
-* **Genom** – volitelné multiplikátory vlastností (rychlost, citlivost, difuze feromonů…), které umožňují vznik „plemen“ s odlišnými strategiemi.
-* **Sandbox editor** – uživatel může kreslit mapu (hnízda, zdroje, překážky) a sledovat, jak si s ní kolonie poradí.
+* **Hledání potravy**: mravenci prozkoumávají mapu a sbírají zdroje.
+* **Feromonové stopy**: každý jedinec ukládá do prostředí feromon, který pomáhá ostatním zorientovat se.
+* **Návrat do hnízda**: nasbíraná potrava je transportována zpět a zvyšuje skóre kolonie.
+* **Více týmů**: na jedné mapě může vedle sebe běžet několik kolonií a jejich chování lze porovnávat.
+* **Genom**: volitelné náhodné multiplikátory vlastností (rychlost, dosah senzorů, jak dlouho a jak hustě mravenec klade feromon…), díky nimž se jednotliví mravenci chovají odlišně.
+* **Sandbox editor**: uživatel může kreslit mapu (hnízda, zdroje, překážky) a sledovat, jak si s ní kolonie poradí.
 
 ---
 
@@ -87,8 +87,8 @@ Vizuální ukázka běžící simulace:
 
 ## Dokumentace
 
-* **[Uživatelská dokumentace](DOCS/user-guide.md)** – návod k ovládání a používání simulace.
-* **[Programátorská_dokumentace](DOCS/developer-guide.md)** – technické detaily.
+* **[Uživatelská dokumentace](DOCS/user-guide.md)**: návod k ovládání a používání simulace.
+* **[Programátorská dokumentace](DOCS/developer-guide.md)**: technické detaily.
 
 ---
 
